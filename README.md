@@ -1,5 +1,5 @@
 # playwright-perl
-Perl bindings for [playwright][pw]
+Perl bindings for [playwright][pw], the amazing cross browser testing framework from Microsoft
 
 ## Has this ever happened to you?
 
@@ -13,7 +13,13 @@ You build a bunch of little actions to do much like action chains in Selenium, a
 
 The best way to do this is probably using [Promise::XS][xs].
 
+[pw]:https://github.com/microsoft/playwright
+[srd]:https://metacpan.org/pod/Selenium::Remote::Driver
+[xp]:http://expressjs.com/
+[xs]:https://metacpan.org/pod/Promise::XS
+
 ## How2develop
 
-npm i playwright express
+npm i playwright express uuid yargs
+
 perl -Ilib example.pl
