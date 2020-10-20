@@ -64,7 +64,7 @@ var pages = {};
         browser = await firefox.launch( { "headless" : !argv.visible } );
     }
     if (argv._.includes('chrome')) {
-        browser = await chrome.launch( { "headless" : !argv.visible } );
+        browser = await chromium.launch( { "headless" : !argv.visible } );
     }
     if (argv._.includes('webkit')) {
         browser = await webkit.launch( { "headless" : !argv.visible } );
