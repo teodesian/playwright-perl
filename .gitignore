@@ -33,3 +33,15 @@ inc/
 /MANIFEST.bak
 /pm_to_blib
 /*.zip
+
+# VIM
+*.swp
+*.swo
+*.swn
+
+# Perltidy
+*.bak
+
+# Node stuff
+node_modules
+package-lock.json
