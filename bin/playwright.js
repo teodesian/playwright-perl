@@ -60,7 +60,6 @@ var pages = {};
 
 //XXX this is probably a race but I don't care yet
 (async () => {
-    var browser;
     if (argv._.includes('firefox')) {
         browser = await firefox.launch( { "headless" : !argv.visible } );
     }
@@ -85,41 +84,33 @@ var pages = {};
 var results = {};
 
 app.use(express.json())
-//app.use(express.urlencoded({ extended: true }))
-app.get('/command', (req, res) => {
+app.get('/command', async (req, res) => {
 
-	var payload = req.body;
-    var page = payload.page;
+	var payload = req.query;
+    var page    = payload.page || 'default';
     var command = payload.command;
+    var args    = payload.args;
+
+    console.log(...args);
+
     var result = {};
-	if (pages[page]) {
-        if (pages[page][command]) {
-            //TODO execute, return result
-            result = { error : false, value : command, type : "page" };
-        } else {
-            result = { error : true, message : "Invalid command '" + command + "' to issue to page '" + page + "'." };
-        }
-    } else if (browser[command]) {
-        //TODO execute, return result
-        result = { error : false, value : command, type : "global" };
+
+    if (pages[page]) {
+        const res = await pages[page][command](...args);
+        result = { error : false, message : res };
     } else {
         result = { error : true, message : "No such page, or " + command + " is not a globally recognized command for puppeteer" };
     }
+
     res.json(result);
 });
 
-// XXX this hangs for some reason.
-// Maybe I shouldn't care and just send SIGTERM tho
-// ^C seems to not leave zommies
-app.get('/shutdown', (req, res) => {
-    (async () => {i
-        console.log('shutting down...');
-        await browser.close();
-        console.log('done');
-        process.exit(0);
-
-        res.send("Sent kill signal to browser");
-    });
+app.get('/shutdown', async (req, res) => {
+    console.log('shutting down...');
+    await browser.close();
+    console.log('done');
+    res.send("Sent kill signal to browser");
+    process.exit(0);
 });
 
 //Modulino
