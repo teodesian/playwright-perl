@@ -9,11 +9,9 @@ const { chromium, firefox, webkit, devices } = require('playwright');
 
 const fs = require('fs');
 
-//TODO use this to define the interface for /command
+// Defines our interface
 let rawdata = fs.readFileSync('api.json');
 let spec = JSON.parse(rawdata);
-
-//console.log(spec);
 
 //TODO support device commands
 const argv = yargs
@@ -57,6 +55,7 @@ const port = argv.port || 6969;
 
 var browser;
 var pages = {};
+var responses = {};
 
 //XXX this is probably a race but I don't care yet
 (async () => {
@@ -81,22 +80,38 @@ var pages = {};
 
 })();
 
-var results = {};
-
 app.use(express.json())
 app.get('/command', async (req, res) => {
 
 	var payload = req.query;
-    var page    = payload.page || 'default';
+    var page    = payload.page;
+    var result  = payload.result;
     var command = payload.command;
-    var args    = payload.args;
-
-    console.log(...args);
+    var args    = payload.args || [];
 
     var result = {};
+    if (typeof args !== 'Array') {
+        args = [args];
+    }
 
-    if (pages[page]) {
+    if (pages[page] && spec.Page.members[command]) {
+        // Operate on the provided page
         const res = await pages[page][command](...args);
+        result = { error : false, message : res };
+    } else if ( results[result] && spec.Result.members[command]) {
+        const res = await results[result][command]
+        result = { error : false, message : res };
+    } else if ( spec.Browser.members[command] || spec.BrowserContext.members[command] ) {
+        const res = await browser[command](...args);
+
+        //File things away for our client modules to interact with
+        if (command == 'newPage') {
+            pages[res._guid] = res;
+        }
+        if (res._type === 'Response') {
+            responses[res._guid] = res;
+        }
+
         result = { error : false, message : res };
     } else {
         result = { error : true, message : "No such page, or " + command + " is not a globally recognized command for puppeteer" };
