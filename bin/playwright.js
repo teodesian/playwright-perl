@@ -36,6 +36,11 @@ const argv = yargs
             type: 'boolean',
         }
     })
+    .option('debug', {
+        alias: 'd',
+        description: 'Print additional debugging messages',
+        type: 'boolean',
+    })
     .option('port', {
         alias: 'p',
         description: 'Run on specified port',
@@ -70,15 +75,19 @@ var responses = {};
     }
 
     if (!browser) {
-        console.log(argv);
         console.log('no browser selected, begone');
         process.exit(1);
     }
     pages.default = await browser.newPage();
     pages.default.goto('http://google.com');
-    console.log('Browser Ready for use');
+
+    if (argv.debug) {
+        console.log('Browser Ready for use');
+    }
 
 })();
+
+
 
 app.use(express.json())
 app.get('/command', async (req, res) => {
@@ -98,8 +107,8 @@ app.get('/command', async (req, res) => {
         // Operate on the provided page
         const res = await pages[page][command](...args);
         result = { error : false, message : res };
-    } else if ( results[result] && spec.Result.members[command]) {
-        const res = await results[result][command]
+    } else if ( responses[result] && spec.Result.members[command]) {
+        const res = await responses[result][command]
         result = { error : false, message : res };
     } else if ( spec.Browser.members[command] || spec.BrowserContext.members[command] ) {
         const res = await browser[command](...args);
@@ -121,16 +130,16 @@ app.get('/command', async (req, res) => {
 });
 
 app.get('/shutdown', async (req, res) => {
-    console.log('shutting down...');
     await browser.close();
-    console.log('done');
-    res.send("Sent kill signal to browser");
+    res.json( { error: false, message : "Sent kill signal to browser" });
     process.exit(0);
 });
 
 //Modulino
 if (require.main === module) {
     app.listen( port, () => {
-	    console.log(`Listening on port ${port}`);
+        if (argv.debug) {
+	        console.log(`Listening on port ${port}`);
+        }
     });
 }
