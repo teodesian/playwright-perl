@@ -1,4 +1,4 @@
-package Playwright::Page;
+package Playwright::Response;
 
 use strict;
 use warnings;
@@ -6,7 +6,7 @@ use warnings;
 use Sub::Install();
 use Carp qw{confess};
 
-#ABSTRACT: Object representing Playwright pages
+#ABSTRACT: Object representing Playwright network responses
 
 no warnings 'experimental';
 use feature qw{signatures state};
@@ -15,9 +15,8 @@ use feature qw{signatures state};
 
     use Playwright;
     my ($browser,$page) = Playwright->new( browser => "chrome" );
-    $page->goto('http://www.google.com');
-    my $browser_version = $browser->version();
-    $browser->quit();
+    my $res = $page->goto('http://www.google.com');
+    print $res->url;
 
 =head2 DESCRIPTION
 
@@ -27,7 +26,8 @@ See L<https://playwright.dev/#version=v1.5.1&path=docs%2Fapi.md&q=class-page> fo
 The specification for this class can also be inspected with the 'spec' method:
 
     use Data::Dumper;
-    my $page = Playwright::Page->new(...);
+    use Playwright::Response;
+    my $page = Playwright::Response->new(...);
     print Dumper($page->spec);
 
 =head1 CONSTRUCTOR
@@ -43,36 +43,23 @@ Creates a new page and returns a handle to interact with it, along with a Playwr
 
 =cut
 
-my %transmogrify = (
-    Frame         => sub {
-        my ($self, $res) = @_;
-        require Playwright::Frame;
-        return Playwright::Frame->new(   page => $self, frame => $res->{_guid} );
-    },
-    ElementHandle => sub {
-        my ($self, $res) = @_;
-        require Playwright::Element;
-        return Playwright::Element->new( page => $self, id    => $res->{_guid} ); 
-    },
-);
-
 sub new ($class, %options) {
 
     my $self = bless({
-        spec    => $options{browser}{spec}{Page}{members},
+        spec    => $options{browser}{spec}{Response}{members},
         browser => $options{browser},
-        guid    => $options{page},
+        guid    => $options{id},
     }, $class);
 
     # Install the subroutines if they aren't already
     foreach my $method (keys(%{$self->{spec}})) {
         Sub::Install::install_sub({
-            code => sub { _request(shift, \%transmogrify, args => [@_], command => $method, page => $self->{guid} ) },
+            code => sub { _request(shift, undef, args => [@_], command => $method, result => $self->{guid} ) },
             as   => $method,
         }) unless $self->can($method);
     }
 
-    return ($self);#, $self->mainFrame());
+    return ($self);
 }
 
 =head1 METHODS
@@ -88,7 +75,7 @@ sub spec ($self) {
 }
 
 sub _request ($self,$translator, %options) {
-    $options{page} = $self->{guid};
+    $options{result} = $self->{guid};
     return $self->{browser}->_request($translator, %options);
 }
 

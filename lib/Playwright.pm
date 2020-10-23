@@ -69,6 +69,19 @@ Creates a new browser and returns a handle to interact with it, along with a new
 
 our ($spec, $server_bin, %class_spec);
 
+my %transmogrify = (
+    Page   => sub { 
+        my ($self, $res) = @_;
+        require Playwright::Page;
+        return Playwright::Page->new(   browser => $self, page => $res->{_guid} );
+    },
+    Result => sub {
+        my ($self, $res) = @_;
+        require Playwright::Response;
+        return Playwright::Response->new( browser => $self, id   => $res->{_guid} );
+    },
+);
+
 BEGIN {
     my $path2here = File::Basename::dirname(Cwd::abs_path($INC{'Playwright.pm'}));
     my $specfile = "$path2here/../api.json";
@@ -85,7 +98,7 @@ BEGIN {
     # Install the subroutines if they aren't already
     foreach my $method (keys(%class_spec)) {
         Sub::Install::install_sub({
-            code => sub { _request(@_) },
+            code => sub { _request(shift, \%transmogrify, args => [@_], command => $method ) },
             as   => $method,
         });
     }
@@ -109,6 +122,11 @@ sub new ($class, %options) {
         debug   => $options{debug},
         pid     => _start_server($options{browser},$options{visible}, $port, $options{debug}),
     }, $class);
+
+    my $res = $self->_request( \%transmogrify, url => 'session' );
+    use Data::Dumper;
+    print Dumper($res);
+    confess("Could not create new session") if $res->{error};
 
     return ($self, Playwright::Page->new( browser => $self, page => 'default' ));
 }
@@ -134,7 +152,7 @@ Automatically called when the Playwright object goes out of scope.
 =cut
 
 sub quit ($self) {
-    $self->_request( url => 'shutdown' );
+    $self->_request( \%transmogrify, url => 'shutdown' );
     return waitpid($self->{pid},0);
 }
 
@@ -147,26 +165,20 @@ sub _start_server($browser,$visible, $port, $debug) {
     $visible = $visible ? '-v' : '';
     $debug   = $debug   ? '-d' : '';
 
+    $ENV{DEBUG} = 'pw:api';
     my $pid = fork // confess("Could not fork");
-    return $pid if $pid;
+    if ($pid) {
+        print "Waiting for port to come up..." if $debug;
+        Net::EmptyPort::wait_port($port,30) or confess("Server never came up after 30s!");
+        print "done\n" if $debug;
+        return $pid;
+    }
 
     exec( $server_bin, $browser, $visible, "-p", $port, $debug);
 }
 
-my %transmogrify = (
-    Page   => sub { 
-        my ($self, $res) = @_;
-        require Playwright::Page;
-        return Playwright::Page->new(   browser => $self, page => $res->{_guid} );
-    },
-    Result => sub {
-        my ($self, $res) = @_;
-        require Playwright::Result;
-        return Playwright::Result->new( browser => $self, id   => $res->{_guid} );
-    },
-);
-
-sub _request ($self, %args) {
+sub _request ($self, $translator, %args) {
+    $translator //= \%transmogrify;
     my $qq = URI::Query->new(%args);
     my $url = $args{url} // 'command';
     my $fullurl = "http://localhost:$self->{port}/$url?$qq";
@@ -175,7 +187,7 @@ sub _request ($self, %args) {
     my $response = $self->{ua}->request($request);
     my $decoded  = JSON::MaybeXS::decode_json($response->decoded_content());
     
-    return $transmogrify{$decoded->{_type}}->($self,$decoded) if $decoded->{_type} && exists $transmogrify{$decoded->{_type}};
+    return $translator->{$decoded->{_type}}->($self,$decoded) if $decoded->{_type} && exists $translator->{$decoded->{_type}};
     return $decoded;
 }
 

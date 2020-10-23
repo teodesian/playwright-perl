@@ -63,7 +63,9 @@ var pages = {};
 var responses = {};
 
 //XXX this is probably a race but I don't care yet
-(async () => {
+app.use(express.json())
+
+app.get('/session', async (req, res) => {
     if (argv._.includes('firefox')) {
         browser = await firefox.launch( { "headless" : !argv.visible } );
     }
@@ -79,17 +81,13 @@ var responses = {};
         process.exit(1);
     }
     pages.default = await browser.newPage();
-    pages.default.goto('http://google.com');
 
     if (argv.debug) {
         console.log('Browser Ready for use');
     }
+    res.json({ error: false, message: 'Browser started successfully.' });
+});
 
-})();
-
-
-
-app.use(express.json())
 app.get('/command', async (req, res) => {
 
 	var payload = req.query;
@@ -130,7 +128,9 @@ app.get('/command', async (req, res) => {
 });
 
 app.get('/shutdown', async (req, res) => {
-    await browser.close();
+    if (browser) {
+        await browser.close();
+    }
     res.json( { error: false, message : "Sent kill signal to browser" });
     process.exit(0);
 });
