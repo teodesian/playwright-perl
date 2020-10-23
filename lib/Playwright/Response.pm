@@ -56,7 +56,7 @@ sub new ($class, %options) {
         Sub::Install::install_sub({
             code => sub {
                 my $self = shift;
-                $self->{browser}->_request( undef, args => [@_], command => $method, result => $self->{guid} );
+                $self->{browser}->_request( undef, args => [@_], command => $method, object => $self->{guid}, type => 'Response' );
             },
             as   => $method,
         }) unless $self->can($method);

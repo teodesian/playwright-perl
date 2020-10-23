@@ -58,29 +58,25 @@ const argv = yargs
 const app = express();
 const port = argv.port || 6969;
 
-var browser;
-var pages = {};
-var responses = {};
-var frames = {};
+var objects = {};
 
 app.use(express.json())
 
 app.get('/session', async (req, res) => {
     if (argv._.includes('firefox')) {
-        browser = await firefox.launch( { "headless" : !argv.visible } );
+        objects.browser = await firefox.launch( { "headless" : !argv.visible } );
     }
     if (argv._.includes('chrome')) {
-        browser = await chromium.launch( { "headless" : !argv.visible } );
+        objects.browser = await chromium.launch( { "headless" : !argv.visible } );
     }
     if (argv._.includes('webkit')) {
-        browser = await webkit.launch( { "headless" : !argv.visible } );
+        objects.browser = await webkit.launch( { "headless" : !argv.visible } );
     }
 
-    if (!browser) {
+    if (!objects.browser) {
         console.log('no browser selected, begone');
         process.exit(1);
     }
-    pages.default = await browser.newPage();
 
     if (argv.debug) {
         console.log('Browser Ready for use');
@@ -91,57 +87,24 @@ app.get('/session', async (req, res) => {
 app.post('/command', async (req, res) => {
 
 	var payload = req.body;
-    var page    = payload.page;
-    var resp    = payload.result;
-    var frame   = payload.frame;
+    var type    = payload.type;
+    var object  = payload.object;
     var command = payload.command;
     var args    = payload.args || [];
 
     var result = {};
 
-    if (pages[page] && spec.Page.members[command]) {
-        // Operate on the provided page
+    if (objects[object] && spec[type] && spec[type].members[command]) {
         try {
-            const res = await pages[page][command](...args);
+            const res = await objects[object][command](...args);
             result = { error : false, message : res };
 
-            if (res._type === 'Response') {
-                responses[res._guid] = res;
-            }
-            if (res._type === 'Frame') {
-                frames[res._guid] = res;
+            if (res._guid) {
+                objects[res._guid] = res;
             }
         } catch (e) {
             result = { error : true, message : e.message };
         }
-
-    } else if ( responses[resp] && spec.Response.members[command]) {
-        try {
-            const res = await responses[resp][command](...args);
-            result = { error : false, message : res };
-        } catch (e) {
-            result = { error : true, message : e.message };
-        }
-    } else if ( frames[frame] && spec.Frame.members[command]) {
-        try {
-            const res = await responses[resp][command](...args);
-            result = { error : false, message : res };
-        } catch (e) {
-            result = { error : true, message : e.message };
-        }
-    } else if ( spec.Browser.members[command] || spec.BrowserContext.members[command] ) {
-        try {
-            const res = await browser[command](...args);
-            result = { error : false, message : res };
-
-            if (command == 'newPage') {
-                pages[res._guid] = res;
-            }
-
-        } catch (e) {
-            result = { error : true, message : e.message };
-        }
-
     } else {
         result = { error : true, message : "No such object, or " + command + " is not a globally recognized command for puppeteer" };
     }
@@ -150,8 +113,8 @@ app.post('/command', async (req, res) => {
 });
 
 app.get('/shutdown', async (req, res) => {
-    if (browser) {
-        await browser.close();
+    if (objects.browser) {
+        await objects.browser.close();
     }
     res.json( { error: false, message : "Sent kill signal to browser" });
     process.exit(0);

@@ -72,7 +72,7 @@ my %transmogrify = (
     Page   => sub { 
         my ($self, $res) = @_;
         require Playwright::Page;
-        return Playwright::Page->new(   browser => $self, id => $res->{_guid} );
+        return Playwright::Page->new( browser => $self, id => $res->{_guid} );
     },
 );
 
@@ -92,7 +92,7 @@ BEGIN {
     # Install the subroutines if they aren't already
     foreach my $method (keys(%class_spec)) {
         Sub::Install::install_sub({
-            code => sub { _request(shift, \%transmogrify, args => [@_], command => $method ) },
+            code => sub { _request(shift, \%transmogrify, args => [@_], command => $method, type => 'Browser', object => 'browser' ) },
             as   => $method,
         });
     }
@@ -118,7 +118,7 @@ sub new ($class, %options) {
     }, $class);
 
     $self->_request( \%transmogrify, url => 'session' );
-    return ($self, Playwright::Page->new( browser => $self, id => 'default' ));
+    return $self;
 }
 
 =head1 METHODS

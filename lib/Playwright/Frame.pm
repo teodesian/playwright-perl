@@ -74,7 +74,7 @@ sub new ($class, %options) {
         Sub::Install::install_sub({
             code => sub {
                 my $self = shift;
-                $self->{browser}->_request( \%transmogrify, args => [@_], command => $method, frame => $self->{guid} )
+                $self->{browser}->_request( \%transmogrify, args => [@_], command => $method, object => $self->{guid}, type => 'Frame' )
             },
             as   => $method,
         }) unless $self->can($method);
