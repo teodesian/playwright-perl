@@ -7,7 +7,6 @@ use sigtrap qw/die normal-signals/;
 
 use File::Basename();
 use Cwd();
-use URI::Query();
 use Net::EmptyPort();
 use LWP::UserAgent();
 use Sub::Install();
@@ -124,8 +123,6 @@ sub new ($class, %options) {
     }, $class);
 
     my $res = $self->_request( \%transmogrify, url => 'session' );
-    use Data::Dumper;
-    print Dumper($res);
     confess("Could not create new session") if $res->{error};
 
     return ($self, Playwright::Page->new( browser => $self, page => 'default' ));
@@ -179,11 +176,14 @@ sub _start_server($browser,$visible, $port, $debug) {
 
 sub _request ($self, $translator, %args) {
     $translator //= \%transmogrify;
-    my $qq = URI::Query->new(%args);
     my $url = $args{url} // 'command';
-    my $fullurl = "http://localhost:$self->{port}/$url?$qq";
+    my $fullurl = "http://localhost:$self->{port}/$url";
 
-    my $request  = HTTP::Request->new( 'GET', $fullurl );#, $header, $content );
+    my $method = $url eq 'command' ? 'POST' : 'GET';
+
+    my $request  = HTTP::Request->new( $method, $fullurl);
+    $request->header( 'Content-type' => 'application/json' );
+    $request->content( JSON::MaybeXS::encode_json(\%args) );
     my $response = $self->{ua}->request($request);
     my $decoded  = JSON::MaybeXS::decode_json($response->decoded_content());
     

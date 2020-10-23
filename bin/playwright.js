@@ -62,7 +62,6 @@ var browser;
 var pages = {};
 var responses = {};
 
-//XXX this is probably a race but I don't care yet
 app.use(express.json())
 
 app.get('/session', async (req, res) => {
@@ -88,18 +87,15 @@ app.get('/session', async (req, res) => {
     res.json({ error: false, message: 'Browser started successfully.' });
 });
 
-app.get('/command', async (req, res) => {
+app.post('/command', async (req, res) => {
 
-	var payload = req.query;
+	var payload = req.body;
     var page    = payload.page;
     var result  = payload.result;
     var command = payload.command;
     var args    = payload.args || [];
 
     var result = {};
-    if (typeof args !== 'Array') {
-        args = [args];
-    }
 
     if (pages[page] && spec.Page.members[command]) {
         // Operate on the provided page
