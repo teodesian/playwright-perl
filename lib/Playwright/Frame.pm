@@ -1,4 +1,4 @@
-package Playwright::Response;
+package Playwright::Frame;
 
 use strict;
 use warnings;
@@ -6,7 +6,7 @@ use warnings;
 use Sub::Install();
 use Carp qw{confess};
 
-#ABSTRACT: Object representing Playwright network responses
+#ABSTRACT: Object representing Playwright pages
 
 no warnings 'experimental';
 use feature qw{signatures state};
@@ -15,24 +15,24 @@ use feature qw{signatures state};
 
     use Playwright;
     my ($browser,$page) = Playwright->new( browser => "chrome" );
-    my $res = $page->goto('http://www.google.com');
-    print $res->url;
+    $page->goto('http://www.google.com');
+    my $browser_version = $browser->version();
+    $browser->quit();
 
 =head2 DESCRIPTION
 
-Perl interface to a lightweight node.js webserver that proxies commands runnable by Playwright in the 'Response' Class.
-See L<https://playwright.dev/#version=master&path=docs%2Fapi.md&q=class-response> for more information.
+Perl interface to a lightweight node.js webserver that proxies commands runnable by Playwright in the 'Frame' Class.
+See L<https://playwright.dev/#version=master&path=docs%2Fapi.md&q=class-frame> for more information.
 
 The specification for this class can also be inspected with the 'spec' method:
 
     use Data::Dumper;
-    use Playwright::Response;
-    my $page = Playwright::Response->new(...);
+    my $page = Playwright::Page->new(...);
     print Dumper($page->spec);
 
 =head1 CONSTRUCTOR
 
-=head2 new(HASH) = (Playwright::Response)
+=head2 new(HASH) = (Playwright::Frame)
 
 Creates a new page and returns a handle to interact with it, along with a Playwright::Frame (the main Frame) to interact with (supposing the page is a FrameSet).
 
@@ -43,10 +43,28 @@ Creates a new page and returns a handle to interact with it, along with a Playwr
 
 =cut
 
+my %transmogrify = (
+    Frame         => sub {
+        my ($self, $res) = @_;
+        require Playwright::Frame;
+        return Playwright::Frame->new( browser => $self, id => $res->{_guid} );
+    },
+    ElementHandle => sub {
+        my ($self, $res) = @_;
+        require Playwright::Element;
+        return Playwright::Element->new( browser => $self, id    => $res->{_guid} ); 
+    },
+    Response => sub {
+        my ($self, $res) = @_;
+        require Playwright::Response;
+        return Playwright::Response->new( browser => $self, id   => $res->{_guid} );
+    },
+);
+
 sub new ($class, %options) {
 
     my $self = bless({
-        spec    => $options{browser}{spec}{Response}{members},
+        spec    => $options{browser}{spec}{Frame}{members},
         browser => $options{browser},
         guid    => $options{id},
     }, $class);
@@ -56,7 +74,7 @@ sub new ($class, %options) {
         Sub::Install::install_sub({
             code => sub {
                 my $self = shift;
-                $self->{browser}->_request( undef, args => [@_], command => $method, result => $self->{guid} );
+                $self->{browser}->_request( \%transmogrify, args => [@_], command => $method, frame => $self->{guid} )
             },
             as   => $method,
         }) unless $self->can($method);

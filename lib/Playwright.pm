@@ -54,9 +54,9 @@ The specification for the above classes can also be inspected with the 'spec' me
 
 =head1 CONSTRUCTOR
 
-=head2 new(HASH) = (Playwright,Playwright::Page)
+=head2 new(HASH) = (Playwright)
 
-Creates a new browser and returns a handle to interact with it, along with a new page Handle to interact with therein.
+Creates a new browser and returns a handle to interact with it.
 
 =head3 INPUT
 
@@ -72,7 +72,7 @@ my %transmogrify = (
     Page   => sub { 
         my ($self, $res) = @_;
         require Playwright::Page;
-        return Playwright::Page->new(   browser => $self, page => $res->{_guid} );
+        return Playwright::Page->new(   browser => $self, id => $res->{_guid} );
     },
 );
 
@@ -118,7 +118,7 @@ sub new ($class, %options) {
     }, $class);
 
     $self->_request( \%transmogrify, url => 'session' );
-    return ($self, Playwright::Page->new( browser => $self, page => 'default' ));
+    return ($self, Playwright::Page->new( browser => $self, id => 'default' ));
 }
 
 =head1 METHODS

@@ -61,6 +61,7 @@ const port = argv.port || 6969;
 var browser;
 var pages = {};
 var responses = {};
+var frames = {};
 
 app.use(express.json())
 
@@ -91,7 +92,8 @@ app.post('/command', async (req, res) => {
 
 	var payload = req.body;
     var page    = payload.page;
-    var resp  = payload.result;
+    var resp    = payload.result;
+    var frame   = payload.frame;
     var command = payload.command;
     var args    = payload.args || [];
 
@@ -99,26 +101,49 @@ app.post('/command', async (req, res) => {
 
     if (pages[page] && spec.Page.members[command]) {
         // Operate on the provided page
-        const res = await pages[page][command](...args);
-        result = { error : false, message : res };
+        try {
+            const res = await pages[page][command](...args);
+            result = { error : false, message : res };
 
-        if (res._type === 'Response') {
-            responses[res._guid] = res;
+            if (res._type === 'Response') {
+                responses[res._guid] = res;
+            }
+            if (res._type === 'Frame') {
+                frames[res._guid] = res;
+            }
+        } catch (e) {
+            result = { error : true, message : e.message };
         }
 
     } else if ( responses[resp] && spec.Response.members[command]) {
-        const res = await responses[resp][command](...args);
-        result = { error : false, message : res };
-    } else if ( spec.Browser.members[command] || spec.BrowserContext.members[command] ) {
-        const res = await browser[command](...args);
-
-        //File things away for our client modules to interact with
-        if (command == 'newPage') {
-            pages[res._guid] = res;
+        try {
+            const res = await responses[resp][command](...args);
+            result = { error : false, message : res };
+        } catch (e) {
+            result = { error : true, message : e.message };
         }
-        result = { error : false, message : res };
+    } else if ( frames[frame] && spec.Frame.members[command]) {
+        try {
+            const res = await responses[resp][command](...args);
+            result = { error : false, message : res };
+        } catch (e) {
+            result = { error : true, message : e.message };
+        }
+    } else if ( spec.Browser.members[command] || spec.BrowserContext.members[command] ) {
+        try {
+            const res = await browser[command](...args);
+            result = { error : false, message : res };
+
+            if (command == 'newPage') {
+                pages[res._guid] = res;
+            }
+
+        } catch (e) {
+            result = { error : true, message : e.message };
+        }
+
     } else {
-        result = { error : true, message : "No such page, or " + command + " is not a globally recognized command for puppeteer" };
+        result = { error : true, message : "No such object, or " + command + " is not a globally recognized command for puppeteer" };
     }
 
     res.json(result);

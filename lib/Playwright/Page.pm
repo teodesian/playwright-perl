@@ -22,7 +22,7 @@ use feature qw{signatures state};
 =head2 DESCRIPTION
 
 Perl interface to a lightweight node.js webserver that proxies commands runnable by Playwright in the 'Page' Class.
-See L<https://playwright.dev/#version=v1.5.1&path=docs%2Fapi.md&q=class-page> for more information.
+See L<https://playwright.dev/#version=master&path=docs%2Fapi.md&q=class-page> for more information.
 
 The specification for this class can also be inspected with the 'spec' method:
 
@@ -32,9 +32,9 @@ The specification for this class can also be inspected with the 'spec' method:
 
 =head1 CONSTRUCTOR
 
-=head2 new(HASH) = (Playwright,Playwright::Frame)
+=head2 new(HASH) = (Playwright::Page)
 
-Creates a new page and returns a handle to interact with it, along with a Playwright::Frame (the main Frame) to interact with (supposing the page is a FrameSet).
+Creates a new page and returns a handle to interact with it.
 
 =head3 INPUT
 
@@ -47,12 +47,12 @@ my %transmogrify = (
     Frame         => sub {
         my ($self, $res) = @_;
         require Playwright::Frame;
-        return Playwright::Frame->new(   page => $self, frame => $res->{_guid} );
+        return Playwright::Frame->new( browser => $self, id => $res->{_guid} );
     },
     ElementHandle => sub {
         my ($self, $res) = @_;
         require Playwright::Element;
-        return Playwright::Element->new( page => $self, id    => $res->{_guid} ); 
+        return Playwright::Element->new( browser => $self, id    => $res->{_guid} ); 
     },
     Response => sub {
         my ($self, $res) = @_;
@@ -66,18 +66,21 @@ sub new ($class, %options) {
     my $self = bless({
         spec    => $options{browser}{spec}{Page}{members},
         browser => $options{browser},
-        guid    => $options{page},
+        guid    => $options{id},
     }, $class);
 
     # Install the subroutines if they aren't already
     foreach my $method (keys(%{$self->{spec}})) {
         Sub::Install::install_sub({
-            code => sub { _request(shift, \%transmogrify, args => [@_], command => $method, page => $self->{guid} ) },
+            code => sub { 
+                my $self = shift;
+                $self->{browser}->_request( \%transmogrify, args => [@_], command => $method, page => $self->{guid} )
+            },
             as   => $method,
         }) unless $self->can($method);
     }
 
-    return ($self);#, $self->mainFrame());
+    return ($self);
 }
 
 =head1 METHODS
@@ -90,11 +93,6 @@ Return the relevant methods and their definitions for this module which are buil
 
 sub spec ($self) {
     return %{$self->{spec}};
-}
-
-sub _request ($self,$translator, %options) {
-    $options{page} = $self->{guid};
-    return $self->{browser}->_request($translator, %options);
 }
 
 1;
