@@ -54,6 +54,11 @@ my %transmogrify = (
         require Playwright::Element;
         return Playwright::Element->new( page => $self, id    => $res->{_guid} ); 
     },
+    Response => sub {
+        my ($self, $res) = @_;
+        require Playwright::Response;
+        return Playwright::Response->new( browser => $self, id   => $res->{_guid} );
+    },
 );
 
 sub new ($class, %options) {

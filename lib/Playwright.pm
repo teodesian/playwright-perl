@@ -43,7 +43,7 @@ commands for which can be sent via instances of the noted module
 
 =item B<Page> - L<Playwright::Page> L<https://playwright.dev/#version=v1.5.1&path=docs%2Fapi.md&q=class-page>
 
-=item B<Result> - L<Playwright::Result> L<https://playwright.dev/#version=v1.5.1&path=docs%2Fapi.md&q=class-response>
+=item B<Response> - L<Playwright::Response> L<https://playwright.dev/#version=v1.5.1&path=docs%2Fapi.md&q=class-response>
 
 =back
 
@@ -73,11 +73,6 @@ my %transmogrify = (
         my ($self, $res) = @_;
         require Playwright::Page;
         return Playwright::Page->new(   browser => $self, page => $res->{_guid} );
-    },
-    Result => sub {
-        my ($self, $res) = @_;
-        require Playwright::Response;
-        return Playwright::Response->new( browser => $self, id   => $res->{_guid} );
     },
 );
 
@@ -122,9 +117,7 @@ sub new ($class, %options) {
         pid     => _start_server($options{browser},$options{visible}, $port, $options{debug}),
     }, $class);
 
-    my $res = $self->_request( \%transmogrify, url => 'session' );
-    confess("Could not create new session") if $res->{error};
-
+    $self->_request( \%transmogrify, url => 'session' );
     return ($self, Playwright::Page->new( browser => $self, page => 'default' ));
 }
 
@@ -186,9 +179,12 @@ sub _request ($self, $translator, %args) {
     $request->content( JSON::MaybeXS::encode_json(\%args) );
     my $response = $self->{ua}->request($request);
     my $decoded  = JSON::MaybeXS::decode_json($response->decoded_content());
-    
-    return $translator->{$decoded->{_type}}->($self,$decoded) if $decoded->{_type} && exists $translator->{$decoded->{_type}};
-    return $decoded;
+    my $msg = $decoded->{message};
+
+    confess($msg) if $decoded->{error};
+
+    return $translator->{$msg->{_type}}->($self,$msg) if (ref $msg eq 'HASH') && $msg->{_type} && exists $translator->{$msg->{_type}};
+    return $msg;
 }
 
 1;

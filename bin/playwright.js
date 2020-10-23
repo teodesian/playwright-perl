@@ -91,7 +91,7 @@ app.post('/command', async (req, res) => {
 
 	var payload = req.body;
     var page    = payload.page;
-    var result  = payload.result;
+    var resp  = payload.result;
     var command = payload.command;
     var args    = payload.args || [];
 
@@ -101,8 +101,13 @@ app.post('/command', async (req, res) => {
         // Operate on the provided page
         const res = await pages[page][command](...args);
         result = { error : false, message : res };
-    } else if ( responses[result] && spec.Result.members[command]) {
-        const res = await responses[result][command]
+
+        if (res._type === 'Response') {
+            responses[res._guid] = res;
+        }
+
+    } else if ( responses[resp] && spec.Response.members[command]) {
+        const res = await responses[resp][command](...args);
         result = { error : false, message : res };
     } else if ( spec.Browser.members[command] || spec.BrowserContext.members[command] ) {
         const res = await browser[command](...args);
@@ -111,10 +116,6 @@ app.post('/command', async (req, res) => {
         if (command == 'newPage') {
             pages[res._guid] = res;
         }
-        if (res._type === 'Response') {
-            responses[res._guid] = res;
-        }
-
         result = { error : false, message : res };
     } else {
         result = { error : true, message : "No such page, or " + command + " is not a globally recognized command for puppeteer" };

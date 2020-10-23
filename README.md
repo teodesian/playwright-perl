@@ -11,7 +11,7 @@ Finally, a solution!
 A little node webserver written in [express][xp] is spun up which exposes the entire playwright API.
 You build a bunch of little actions to do much like action chains in Selenium, and then make 'em go whir.
 
-The best way to do this is probably using [Promise::XS][xs].
+See example.pl for usage examples.
 
 [pw]:https://github.com/microsoft/playwright
 [srd]:https://metacpan.org/pod/Selenium::Remote::Driver
