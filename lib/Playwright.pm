@@ -8,11 +8,13 @@ use sigtrap qw/die normal-signals/;
 use File::Basename();
 use Cwd();
 use LWP::UserAgent();
+use Sub::Install();
 use Net::EmptyPort();
 use JSON::MaybeXS();
 use File::Slurper();
 use Carp qw{confess};
 
+use Playwright::Base();
 use Playwright::Util();
 
 #ABSTRACT: Perl client for Playwright
@@ -82,6 +84,17 @@ BEGIN {
             my $class = "Playwright::$class";
             return $class->new( handle => $self, id => $res->{_guid}, type => $class );
         };
+
+        #All of the Playwright::* Classes are made by this MAGIC
+        Sub::Install::install_sub({
+            code => sub ($classname,%options) {
+                @class::ISA = qw{Playwright::Base};
+                $options{type} = $class;
+                return Playwright::Base::new($classname,%options);
+            },
+            as   => 'new',
+            into => "Playwright::$class",
+        });
     }
 
     # Make sure it's possible to start the server
@@ -94,7 +107,6 @@ sub new ($class, %options) {
     #XXX yes, this is a race, so we need retries in _start_server
     my $port = Net::EmptyPort::empty_port();
     my $self = bless({
-        spec    => $spec,
         ua      => $options{ua} // LWP::UserAgent->new(),
         port    => $port,
         debug   => $options{debug},
@@ -152,74 +164,6 @@ sub _start_server($port, $debug) {
     }
 
     exec( $server_bin, "-p", $port, $debug);
-}
-
-1;
-
-#TODO just define these based on the dang JSON
-
-package Playwright::Browser;
-
-use parent qw{Playwright::Base};
-
-sub new ($class,%options) {
-    $options{type} = 'Browser';
-    return $class->SUPER::new(%options);
-}
-
-1;
-
-package Playwright::BrowserContext;
-
-use parent qw{Playwright::Base};
-
-sub new ($class,%options) {
-    $options{type} = 'BrowserContext';
-    $class->SUPER::new(%options);
-}
-
-1;
-
-package Playwright::Page;
-
-use parent qw{Playwright::Base};
-
-sub new ($class,%options) {
-    $options{type} = 'Page';
-    $class->SUPER::new(%options);
-}
-
-1;
-
-package Playwright::Frame;
-
-use parent qw{Playwright::Base};
-
-sub new ($class,%options) {
-    $options{type} = 'Frame';
-    $class->SUPER::new(%options);
-}
-
-1;
-
-package Playwright::Response;
-
-use parent qw{Playwright::Base};
-
-sub new ($class,%options) {
-    $options{type} = 'Response';
-    $class->SUPER::new(%options);
-}
-
-1;
-
-package Playwright::ElementHandle;
-
-use parent qw{Playwright::Base};
-
-sub new ($class,%options) {
-    $options{type} = 'Result';
-    $class->SUPER::new(%options);
 }
 
 1;

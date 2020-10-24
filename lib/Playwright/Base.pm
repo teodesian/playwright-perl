@@ -25,11 +25,11 @@ use feature qw{signatures};
 Base class for each Playwright class.
 You probably shouldn't use this directly; instead use a subclass.
 
-The specification for each class can also be inspected with the 'spec' method:
+The specification for each class can also be inspected with the 'spec' property:
 
     use Data::Dumper;
-    my $page = Playwright::Base->new(...);
-    print Dumper($page->spec('Page'));
+    my $object = Playwright::Base->new(...);
+    print Dumper($object->{spec});
 
 =head1 CONSTRUCTOR
 
@@ -61,25 +61,14 @@ sub new ($class, %options) {
         Sub::Install::install_sub({
             code => sub {
                 my $self = shift;
-                $self->_request( args => [@_], command => $method, object => $self->{guid}, type => $self->{type} )
+                Playwright::Base::_request($self, args => [@_], command => $method, object => $self->{guid}, type => $self->{type} );
             },
             as   => $method,
+            into => $class,
         }) unless $self->can($method);
     }
 
     return ($self);
-}
-
-=head1 METHODS
-
-=head2 spec
-
-Return the relevant methods and their definitions for this module which are built dynamically from the Playwright API spec.
-
-=cut
-
-sub spec ($self) {
-    return %{$self->{spec}};
 }
 
 sub _request ($self, %args) {
