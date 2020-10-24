@@ -12,20 +12,12 @@ use Playwright::Util();
 no warnings 'experimental';
 use feature qw{signatures};
 
-=head2 SYNOPSIS
-
-    use Playwright;
-    my ($handle,$page) = Playwright->new( handle => "chrome" );
-    $page->goto('http://www.google.com');
-    my $handle_version = $handle->version();
-    $handle->quit();
-
 =head2 DESCRIPTION
 
-Base class for each Playwright class.
-You probably shouldn't use this directly; instead use a subclass.
+Base class for each Playwright class magic'd up by Sub::Install in Playwright's BEGIN block.
+You probably shouldn't use this.
 
-The specification for each class can also be inspected with the 'spec' property:
+The specification for each class can be inspected with the 'spec' property:
 
     use Data::Dumper;
     my $object = Playwright::Base->new(...);
@@ -40,7 +32,6 @@ Creates a new page and returns a handle to interact with it.
 =head3 INPUT
 
     handle (Playwright) : Playwright object.
-    spec (HASHREF)      : Specification for the class to build.
     id (STRING)         : _guid returned by a response from the Playwright server with the provided type.
     type (STRING)       : Type to actually use
 

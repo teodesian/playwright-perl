@@ -88,9 +88,6 @@ app.post('/command', async (req, res) => {
 });
 
 app.get('/shutdown', async (req, res) => {
-    if (objects.browser) {
-        await objects.browser.close();
-    }
     res.json( { error: false, message : "Sent kill signal to browser" });
     process.exit(0);
 });

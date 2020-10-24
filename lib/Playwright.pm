@@ -24,34 +24,23 @@ use feature qw{signatures state};
 
 =head2 SYNOPSIS
 
+    use JSON::PP;
     use Playwright;
-    my ($browser,$page) = Playwright->new( browser => "chrome" );
-    $page->goto('http://www.google.com');
-    my $browser_version = $browser->version();
-    $browser->quit();
+
+    my $handle = Playwright->new();
+    my $browser = $handle->launch( headless => JSON::PP::false, type => 'chrome' );
+    my $page = $browser->newPage();
+    my $res = $page->goto('http://google.com', { waitUntil => 'networkidle' });
+    my $frameset = $page->mainFrame();
+    my $kidframes = $frameset->childFrames();
 
 =head2 DESCRIPTION
 
 Perl interface to a lightweight node.js webserver that proxies commands runnable by Playwright.
-Currently understands commands you can send to the following Playwright classes,
-commands for which can be sent via instances of the noted module
+Currently understands commands you can send to all the playwright classes defined in api.json.
 
-=over 4
-
-=item B<Browser> - L<Playwright> L<https://playwright.dev/#version=master&path=docs%2Fapi.md&q=class-browser>
-
-=item B<BrowserContext> - L<Playwright> L<https://playwright.dev/#version=master&path=docs%2Fapi.md&q=class-browsercontext>
-
-=item B<Page> - L<Playwright::Page> L<https://playwright.dev/#version=v1.5.1&path=docs%2Fapi.md&q=class-page>
-
-=item B<Response> - L<Playwright::Response> L<https://playwright.dev/#version=v1.5.1&path=docs%2Fapi.md&q=class-response>
-
-=back
-
-The specification for the above classes can also be inspected with the 'spec' method for each respective class:
-
-    use Data::Dumper;
-    print Dumper($browser->spec , $page->spec, ...);
+See L<https://playwright.dev/#version=master&path=docs%2Fapi.md&q=>
+for what the classes do, and their usage.
 
 =head1 CONSTRUCTOR
 
@@ -61,9 +50,7 @@ Creates a new browser and returns a handle to interact with it.
 
 =head3 INPUT
 
-    browser (STRING) : Name of the browser to use.  One of (chrome, firefox, webkit).
-    visible (BOOL)   : Whether to start the browser such that it displays on your desktop (headless or not).
-    debug   (BOOL)   : Print extra messages from the Playwright server process
+    debug (BOOL) : Print extra messages from the Playwright server process
 
 =cut
 
