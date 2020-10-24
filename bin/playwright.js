@@ -15,27 +15,6 @@ let spec = JSON.parse(rawdata);
 
 //TODO support device commands
 const argv = yargs
-    .command('firefox', 'Starts a playwright instance of firefox', {
-        firefox: {
-            description: 'Start a firefox instance',
-            alias: 'f',
-            type: 'boolean',
-        }
-    })
-    .command('chrome', 'Starts a playwright instance of chrome', {
-        chrome: {
-            description: 'Start a chrome instance',
-            alias: 'c',
-            type: 'boolean',
-        }
-    })
-    .command('webkit', 'Starts a playwright instance of webkit', {
-        webkit: {
-            description: 'Start a webkit instance',
-            alias: 'w',
-            type: 'boolean',
-        }
-    })
     .option('debug', {
         alias: 'd',
         description: 'Print additional debugging messages',
@@ -46,11 +25,6 @@ const argv = yargs
         description: 'Run on specified port',
         type: 'number',
     })
-    .option('visible', {
-        alias: 'v',
-        description: 'Run with headless mode off',
-        type: 'boolean',
-    })
     .help()
     .alias('help', 'h')
     .argv;
@@ -59,34 +33,35 @@ const app = express();
 const port = argv.port || 6969;
 
 var objects = {};
+var browsers = { 'firefox' : firefox, 'chrome' : chromium, 'webkit' : webkit };
 
 app.use(express.json())
 
-app.get('/session', async (req, res) => {
-    if (argv._.includes('firefox')) {
-        objects.browser = await firefox.launch( { "headless" : !argv.visible } );
-    }
-    if (argv._.includes('chrome')) {
-        objects.browser = await chromium.launch( { "headless" : !argv.visible } );
-    }
-    if (argv._.includes('webkit')) {
-        objects.browser = await webkit.launch( { "headless" : !argv.visible } );
-    }
+app.post('/session', async (req, res) => {
+	var payload = req.body;
+    var type    = payload.type;
+    var args    = payload.args || [];
 
-    if (!objects.browser) {
-        console.log('no browser selected, begone');
-        process.exit(1);
-    }
+    console.log(type,args);
 
-    if (argv.debug) {
-        console.log('Browser Ready for use');
+    var result;
+    if ( type && browsers[type] ) {
+        try {
+            var browser = await firefox.launch(...args);
+            objects[browser._guid] = browser;
+            result = { error : false, message : browser };
+        } catch (e) {
+            result = { error : true, message : e.message};
+        }
+    } else {
+        result = { error : true, message : "Please select a supported browser" };
     }
-    res.json({ error: false, message: 'Browser started successfully.' });
+    res.json(result);
 });
 
 app.post('/command', async (req, res) => {
 
-	var payload = req.body;
+    var payload = req.body;
     var type    = payload.type;
     var object  = payload.object;
     var command = payload.command;
@@ -124,7 +99,7 @@ app.get('/shutdown', async (req, res) => {
 if (require.main === module) {
     app.listen( port, () => {
         if (argv.debug) {
-	        console.log(`Listening on port ${port}`);
+            console.log(`Listening on port ${port}`);
         }
     });
 }

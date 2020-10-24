@@ -7,14 +7,13 @@ use sigtrap qw/die normal-signals/;
 
 use File::Basename();
 use Cwd();
-use Net::EmptyPort();
 use LWP::UserAgent();
-use Sub::Install();
+use Net::EmptyPort();
 use JSON::MaybeXS();
 use File::Slurper();
 use Carp qw{confess};
 
-use Playwright::Page();
+use Playwright::Util();
 
 #ABSTRACT: Perl client for Playwright
 
@@ -66,15 +65,7 @@ Creates a new browser and returns a handle to interact with it.
 
 =cut
 
-our ($spec, $server_bin, %class_spec);
-
-my %transmogrify = (
-    Page   => sub { 
-        my ($self, $res) = @_;
-        require Playwright::Page;
-        return Playwright::Page->new( browser => $self, id => $res->{_guid} );
-    },
-);
+our ($spec, $server_bin, %mapper);
 
 BEGIN {
     my $path2here = File::Basename::dirname(Cwd::abs_path($INC{'Playwright.pm'}));
@@ -84,23 +75,18 @@ BEGIN {
     my $spec_raw = File::Slurper::read_text($specfile);
     my $decoder = JSON::MaybeXS->new();
     $spec = $decoder->decode($spec_raw);
-    %class_spec = (
-        %{$spec->{Browser}{members}},
-        %{$spec->{BrowserContext}{members}}
-    );
 
-    # Install the subroutines if they aren't already
-    foreach my $method (keys(%class_spec)) {
-        Sub::Install::install_sub({
-            code => sub { _request(shift, \%transmogrify, args => [@_], command => $method, type => 'Browser', object => 'browser' ) },
-            as   => $method,
-        });
+    foreach my $class (keys(%$spec)) {
+        $mapper{$class} = sub {
+            my ($self, $res) = @_;
+            my $class = "Playwright::$class";
+            return $class->new( handle => $self, id => $res->{_guid}, type => $class );
+        };
     }
 
     # Make sure it's possible to start the server
     $server_bin = "$path2here/../bin/playwright.js";
     confess("Can't locate Playwright server in '$server_bin'!") unless -f $specfile;
-    1;
 }
 
 sub new ($class, %options) {
@@ -110,27 +96,30 @@ sub new ($class, %options) {
     my $self = bless({
         spec    => $spec,
         ua      => $options{ua} // LWP::UserAgent->new(),
-        browser => $options{browser},
-        visible => $options{visible},
         port    => $port,
         debug   => $options{debug},
-        pid     => _start_server($options{browser},$options{visible}, $port, $options{debug}),
+        pid     => _start_server( $port, $options{debug}),
     }, $class);
 
-    $self->_request( \%transmogrify, url => 'session' );
     return $self;
 }
 
 =head1 METHODS
 
-=head2 spec
+=head2 launch(HASH) = Playwright::Browser
 
-Return the relevant methods and their definitions for this module which are built dynamically from the Playwright API spec.
+The Argument hash here is essentially those you'd see from browserType.launch().  See:
+L<https://playwright.dev/#version=v1.5.1&path=docs%2Fapi.md&q=browsertypelaunchoptions>
+
+There is an additional "special" argument, that of 'type', which is used to specify what type of browser to use, e.g. 'firefox'.
 
 =cut
 
-sub spec ($self) {
-    return %class_spec;
+sub launch ($self, %args) {
+    #TODO coerce types based on spec
+    my $msg = Playwright::Util::request ('POST', 'session', $self->{port}, $self->{ua}, type => delete $args{type}, args => [\%args] );
+    return $Playwright::mapper{$msg->{_type}}->($self,$msg) if (ref $msg eq 'HASH') && $msg->{_type} && exists $Playwright::mapper{$msg->{_type}};
+    return $msg;
 }
 
 =head2 quit, DESTROY
@@ -142,7 +131,7 @@ Automatically called when the Playwright object goes out of scope.
 =cut
 
 sub quit ($self) {
-    $self->_request( \%transmogrify, url => 'shutdown' );
+    Playwright::Util::request ('GET', 'shutdown', $self->{port}, $self->{ua} ); 
     return waitpid($self->{pid},0);
 }
 
@@ -150,9 +139,7 @@ sub DESTROY ($self) {
     $self->quit();
 }
 
-sub _start_server($browser,$visible, $port, $debug) {
-    confess("Invalid browser '$browser'") unless grep { $_ eq $browser } qw{chrome firefox webkit};
-    $visible = $visible ? '-v' : '';
+sub _start_server($port, $debug) {
     $debug   = $debug   ? '-d' : '';
 
     $ENV{DEBUG} = 'pw:api';
@@ -164,27 +151,75 @@ sub _start_server($browser,$visible, $port, $debug) {
         return $pid;
     }
 
-    exec( $server_bin, $browser, $visible, "-p", $port, $debug);
+    exec( $server_bin, "-p", $port, $debug);
 }
 
-sub _request ($self, $translator, %args) {
-    $translator //= \%transmogrify;
-    my $url = $args{url} // 'command';
-    my $fullurl = "http://localhost:$self->{port}/$url";
+1;
 
-    my $method = $url eq 'command' ? 'POST' : 'GET';
+#TODO just define these based on the dang JSON
 
-    my $request  = HTTP::Request->new( $method, $fullurl);
-    $request->header( 'Content-type' => 'application/json' );
-    $request->content( JSON::MaybeXS::encode_json(\%args) );
-    my $response = $self->{ua}->request($request);
-    my $decoded  = JSON::MaybeXS::decode_json($response->decoded_content());
-    my $msg = $decoded->{message};
+package Playwright::Browser;
 
-    confess($msg) if $decoded->{error};
+use parent qw{Playwright::Base};
 
-    return $translator->{$msg->{_type}}->($self,$msg) if (ref $msg eq 'HASH') && $msg->{_type} && exists $translator->{$msg->{_type}};
-    return $msg;
+sub new ($class,%options) {
+    $options{type} = 'Browser';
+    return $class->SUPER::new(%options);
+}
+
+1;
+
+package Playwright::BrowserContext;
+
+use parent qw{Playwright::Base};
+
+sub new ($class,%options) {
+    $options{type} = 'BrowserContext';
+    $class->SUPER::new(%options);
+}
+
+1;
+
+package Playwright::Page;
+
+use parent qw{Playwright::Base};
+
+sub new ($class,%options) {
+    $options{type} = 'Page';
+    $class->SUPER::new(%options);
+}
+
+1;
+
+package Playwright::Frame;
+
+use parent qw{Playwright::Base};
+
+sub new ($class,%options) {
+    $options{type} = 'Frame';
+    $class->SUPER::new(%options);
+}
+
+1;
+
+package Playwright::Response;
+
+use parent qw{Playwright::Base};
+
+sub new ($class,%options) {
+    $options{type} = 'Response';
+    $class->SUPER::new(%options);
+}
+
+1;
+
+package Playwright::ElementHandle;
+
+use parent qw{Playwright::Base};
+
+sub new ($class,%options) {
+    $options{type} = 'Result';
+    $class->SUPER::new(%options);
 }
 
 1;
