@@ -23,9 +23,26 @@ my ($context) = @{$browser->contexts()};
 my $res = $page->goto('http://google.com', { waitUntil => 'networkidle' });
 print Dumper($res->status(), $browser->version());
 
+# Put your hand in the jar
+my $cookies = $context->cookies();
+print Dumper($cookies);
+
 # Grab the main frame, in case this is a frameset
 my $frameset = $page->mainFrame();
 print Dumper($frameset->childFrames());
+
+# Run some JS XXX not yet working unfortunately
+my $fun = "
+    (input) => {
+      return {
+        width: document.documentElement.clientWidth,
+        height: document.documentElement.clientHeight,
+        deviceScaleFactor: window.devicePixelRatio,
+        arguments: input
+      }
+    }";
+my $result = $page->evaluate($fun, 'zippy');
+print Dumper($result);
 
 # Use a selector to find which input is visible and type into it
 # Ideally you'd use a better selector to solve this problem, but this is just showing off
@@ -34,7 +51,7 @@ my $inputs = $page->selectMulti('input');
 foreach my $input (@$inputs) {
     try {
         # Pretty much a brute-force approach here, again use a better pseudo-selector instead like :visible
-        $input->fill('whee', { timeout => 250 } );
+        $input->fill('tickle', { timeout => 250 } );
     } catch {
         print "Element not visible, skipping...\n";
     }
@@ -43,6 +60,3 @@ foreach my $input (@$inputs) {
 # Said better selector
 my $actual_input = $page->select('input[name=q]');
 $actual_input->fill('whee');
-
-
-#my $cookies = $context->cookies();

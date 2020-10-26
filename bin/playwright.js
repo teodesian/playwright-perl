@@ -74,6 +74,12 @@ app.post('/command', async (req, res) => {
             const res = await objects[object][command](...args);
             result = { error : false, message : res };
 
+            if (Array.isArray(res)) {
+                for (var r of res) {
+                    objects[r._guid] = r;
+                }
+            }
+
             if (res && res._guid) {
                 objects[res._guid] = res;
             }
