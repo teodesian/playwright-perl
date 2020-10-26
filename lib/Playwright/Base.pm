@@ -72,6 +72,13 @@ sub new ($class, %options) {
 
 sub _request ($self, %args) {
     my $msg = Playwright::Util::request ('POST', 'command', $self->{port}, $self->{ua}, %args);
+    if (ref $msg eq 'ARRAY') {
+        @$msg = map {
+            my $subject = $_;
+            $subject = $Playwright::mapper{$_->{_type}}->($self,$_) if (ref $_ eq 'HASH') && $_->{_type} && exists $Playwright::mapper{$_->{_type}};
+            $subject
+        } @$msg;
+    }
     return $Playwright::mapper{$msg->{_type}}->($self,$msg) if (ref $msg eq 'HASH') && $msg->{_type} && exists $Playwright::mapper{$msg->{_type}};
     return $msg;
 }
