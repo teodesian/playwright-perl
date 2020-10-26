@@ -14,4 +14,4 @@ print Dumper($res->status(), $browser->version());
 my $frameset = $page->mainFrame();
 print Dumper($frameset->childFrames());
 my $inputs = $page->selectMulti('input');
-print Dumper($inputs);
+print Dumper(map { $_->{guid} } @$inputs);

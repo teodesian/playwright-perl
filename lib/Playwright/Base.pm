@@ -64,7 +64,7 @@ sub new ($class, %options) {
             },
             as   => $renamed,
             into => $class,
-        }) unless $self->can($method);
+        }) unless $self->can($renamed);
     }
 
     return ($self);
@@ -72,6 +72,9 @@ sub new ($class, %options) {
 
 sub _request ($self, %args) {
     my $msg = Playwright::Util::request ('POST', 'command', $self->{port}, $self->{ua}, %args);
+
+    #TODO Check spec and see if we need to coerce a bool
+
     if (ref $msg eq 'ARRAY') {
         @$msg = map {
             my $subject = $_;
