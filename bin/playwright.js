@@ -74,7 +74,7 @@ app.post('/command', async (req, res) => {
             const res = await objects[object][command](...args);
             result = { error : false, message : res };
 
-            if (res._guid) {
+            if (res && res._guid) {
                 objects[res._guid] = res;
             }
         } catch (e) {
