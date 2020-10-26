@@ -13,3 +13,5 @@ my $res = $page->goto('http://google.com', { waitUntil => 'networkidle' });
 print Dumper($res->status(), $browser->version());
 my $frameset = $page->mainFrame();
 print Dumper($frameset->childFrames());
+my $inputs = $page->selectMulti('input');
+print Dumper($inputs);

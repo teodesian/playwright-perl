@@ -42,6 +42,24 @@ Currently understands commands you can send to all the playwright classes define
 See L<https://playwright.dev/#version=master&path=docs%2Fapi.md&q=>
 for what the classes do, and their usage.
 
+There is one major exception in how things work versus the documentation.
+The selector functions have to be renamed from starting with $ for obvious reasons.
+The renamed functions are as follows:
+
+=over 4
+
+=item $ => select
+
+=item $$ => selectMulti
+
+=item $eval => eval
+
+=item $$eval => evalMulti
+
+=back
+
+These functions are present as part of the Page, Frame and ElementHandle classes.
+
 =head1 CONSTRUCTOR
 
 =head2 new(HASH) = (Playwright)

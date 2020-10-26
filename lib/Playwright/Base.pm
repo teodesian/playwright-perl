@@ -37,6 +37,13 @@ Creates a new page and returns a handle to interact with it.
 
 =cut
 
+our %methods_to_rename = (
+    '$'      => 'select',
+    '$$'     => 'selectMulti',
+    '$eval'  => 'eval',
+    '$$eval' => 'evalMulti',
+);
+
 sub new ($class, %options) {
 
     my $self = bless({
@@ -49,12 +56,13 @@ sub new ($class, %options) {
 
     # Install the subroutines if they aren't already
     foreach my $method (keys(%{$self->{spec}})) {
+        my $renamed = exists $methods_to_rename{$method} ? $methods_to_rename{$method} : $method;
         Sub::Install::install_sub({
             code => sub {
                 my $self = shift;
                 Playwright::Base::_request($self, args => [@_], command => $method, object => $self->{guid}, type => $self->{type} );
             },
-            as   => $method,
+            as   => $renamed,
             into => $class,
         }) unless $self->can($method);
     }
