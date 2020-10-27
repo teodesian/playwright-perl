@@ -83,6 +83,18 @@ app.post('/command', async (req, res) => {
 
     if (subject && spec[type] && spec[type].members[command]) {
         try {
+
+            //XXX We have to do a bit of 'special' handling for scripts
+            // This has implications for the type of scripts you can use
+            if (command == 'evaluate' || command == 'evaluateHandle') {
+                var toEval = args.shift();
+                const fun = new Function (toEval);
+                args = [
+                    fun,
+                    ...args
+                ];
+            }
+
             const res = await subject[command](...args);
             result = { error : false, message : res };
 

@@ -42,7 +42,10 @@ Currently understands commands you can send to all the playwright classes define
 See L<https://playwright.dev/#version=master&path=docs%2Fapi.md&q=>
 for what the classes do, and their usage.
 
-There is one major exception in how things work versus the documentation.
+There are two major exceptions in how things work versus the documentation.
+
+=head3 Selectors
+
 The selector functions have to be renamed from starting with $ for obvious reasons.
 The renamed functions are as follows:
 
@@ -59,6 +62,24 @@ The renamed functions are as follows:
 =back
 
 These functions are present as part of the Page, Frame and ElementHandle classes.
+
+=head3 Scripts
+
+The evaluate() and evaluateHandle() functions can only be run in string mode.
+To maximize the usefulness of these, I have wrapped the string passed with the following function:
+
+    const fun = new Function (toEval);
+    args = [
+        fun,
+        ...args
+    ];
+
+As such you can effectively treat the script string as a function body.
+The same restriction on only being able to pass one arg remains from the upstream:
+L<https://playwright.dev/#version=master&path=docs%2Fapi.md&q=pageevaluatepagefunction-arg>
+
+You will have to refer to the arguments array as described here:
+L<https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/arguments> 
 
 =head1 CONSTRUCTOR
 

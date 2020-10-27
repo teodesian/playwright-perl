@@ -35,16 +35,15 @@ print Dumper($cookies);
 my $frameset = $page->mainFrame();
 print Dumper($frameset->childFrames());
 
-# Run some JS XXX not yet working unfortunately
+# Run some JS
 my $fun = "
-    (input) => {
-      return {
+    var input = arguments[0];
+    return {
         width: document.documentElement.clientWidth,
         height: document.documentElement.clientHeight,
         deviceScaleFactor: window.devicePixelRatio,
-        arguments: input
-      }
-    }";
+        arg: input
+    };";
 my $result = $page->evaluate($fun, 'zippy');
 print Dumper($result);
 
