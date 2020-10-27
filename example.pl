@@ -7,13 +7,17 @@ use Playwright;
 
 use Try::Tiny;
 
-my $handle = Playwright->new();
+my $handle = Playwright->new( debug => 1 );
 
 # Open a new chrome instance
 my $browser = $handle->launch( headless => JSON::PP::false, type => 'chrome' );
 
 # Open a tab therein
-my $page = $browser->newPage();
+my $page = $browser->newPage({ videosPath => 'video' });
+my $bideo = $page->video;
+
+my $vidpath = $bideo->path;
+print "Video Path: $vidpath\n";
 
 # Browser contexts don't exist until you open at least one page.
 # You'll need this to grab and set cookies.

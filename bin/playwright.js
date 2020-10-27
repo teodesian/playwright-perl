@@ -3,7 +3,7 @@
 "use strict";
 
 const yargs = require('yargs');
-const uuid = require('uuid');
+const { v4 : uuidv4 } = require('uuid');
 const express = require('express');
 const { chromium, firefox, webkit, devices } = require('playwright');
 
@@ -71,6 +71,7 @@ app.post('/command', async (req, res) => {
         console.log(type,object,command,args);
     }
 
+    // XXX this would be cleaner if the mouse() and keyboard() methods just returned a Mouse and Keyboard object
     var subject = objects[object];
     if (subject) {
         if (type == 'Mouse') {
@@ -89,6 +90,12 @@ app.post('/command', async (req, res) => {
                 for (var r of res) {
                     objects[r._guid] = r;
                 }
+            }
+
+            // XXX videos are special, we have to magic up a guid etc for them
+            if (command == 'video' && res) {
+                res._guid = 'Video@' + uuidv4();
+                res._type = 'Video';
             }
 
             if (res && res._guid) {

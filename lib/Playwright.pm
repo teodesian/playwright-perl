@@ -162,7 +162,7 @@ sub DESTROY ($self) {
 sub _start_server($port, $debug) {
     $debug   = $debug   ? '-d' : '';
 
-    $ENV{DEBUG} = 'pw:api';
+    $ENV{DEBUG} = 'pw:api' if $debug;
     my $pid = fork // confess("Could not fork");
     if ($pid) {
         print "Waiting for port to come up..." if $debug;
