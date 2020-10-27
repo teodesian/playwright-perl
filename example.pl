@@ -60,3 +60,15 @@ foreach my $input (@$inputs) {
 # Said better selector
 my $actual_input = $page->select('input[name=q]');
 $actual_input->fill('whee');
+
+# Take screen of said element
+$actual_input->screenshot({ path => 'test.jpg' });
+
+# Fiddle with HIDs
+my $mouse = $page->mouse;
+print "GOT HERE\n";
+$mouse->move( 0, 0 );
+my $keyboard = $page->keyboard();
+$keyboard->type('F12');
+
+

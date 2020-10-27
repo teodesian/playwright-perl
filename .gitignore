@@ -45,3 +45,6 @@ inc/
 # Node stuff
 node_modules
 package-lock.json
+
+#nobody need know of our love, baby
+test.jpg

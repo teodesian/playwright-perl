@@ -42,7 +42,6 @@ app.post('/session', async (req, res) => {
     var type    = payload.type;
     var args    = payload.args || [];
 
-    console.log(type,args);
 
     var result;
     if ( type && browsers[type] ) {
@@ -66,12 +65,24 @@ app.post('/command', async (req, res) => {
     var object  = payload.object;
     var command = payload.command;
     var args    = payload.args || [];
-
     var result = {};
 
-    if (objects[object] && spec[type] && spec[type].members[command]) {
+    if (argv.debug) {
+        console.log(type,object,command,args);
+    }
+
+    var subject = objects[object];
+    if (subject) {
+        if (type == 'Mouse') {
+            subject = objects[object].mouse;
+        } else if (type == 'Keyboard' ) {
+            subject = objects[object].keyboard;
+        }
+    }
+
+    if (subject && spec[type] && spec[type].members[command]) {
         try {
-            const res = await objects[object][command](...args);
+            const res = await subject[command](...args);
             result = { error : false, message : res };
 
             if (Array.isArray(res)) {

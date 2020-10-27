@@ -102,6 +102,9 @@ BEGIN {
         });
     }
 
+    $mapper{mouse}    = sub { my ($self, $res) = @_; return Playwright::Mouse->new( handle => $self, id => $res->{_guid}, type => 'Mouse' ) };
+    $mapper{keyboard} = sub { my ($self, $res) = @_; return Playwright::Keyboard->new( handle => $self, id => $res->{_guid}, type => 'Keyboard' ) };
+
     # Make sure it's possible to start the server
     $server_bin = "$path2here/../bin/playwright.js";
     confess("Can't locate Playwright server in '$server_bin'!") unless -f $specfile;
