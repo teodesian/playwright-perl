@@ -37,12 +37,13 @@ Creates a new page and returns a handle to interact with it.
 
 =cut
 
-our %methods_to_rename = (
-    '$'      => 'select',
-    '$$'     => 'selectMulti',
-    '$eval'  => 'eval',
-    '$$eval' => 'evalMulti',
-);
+sub AUTOLOAD {
+    our $AUTOLOAD;
+    my $method = $AUTOLOAD;
+    my ($self,@args) = @_;
+
+    return Playwright::Base::_request($self, args => [@args], command => $method, object => $self->{guid}, type => $self->{type} );
+}
 
 sub new ($class, %options) {
 
@@ -53,33 +54,6 @@ sub new ($class, %options) {
         ua      => $options{handle}{ua},
         port    => $options{handle}{port},
     }, $class);
-
-    # Hack in mouse and keyboard objects for the Page class
-    if ($self->{type} eq 'Page') {
-        foreach my $hid (qw{keyboard mouse}) {
-            Sub::Install::install_sub({
-                code => sub {
-                    my $self = shift;
-                    $Playwright::mapper{$hid}->($self, { _type => 'Page', _guid => $self->{guid} }) if exists $Playwright::mapper{$hid};
-                },
-                as   => $hid,
-                into => $class,
-            }) unless $self->can($hid);
-        }
-    }
-
-    # Install the subroutines if they aren't already
-    foreach my $method (keys(%{$self->{spec}})) {
-        my $renamed = exists $methods_to_rename{$method} ? $methods_to_rename{$method} : $method;
-        Sub::Install::install_sub({
-            code => sub {
-                my $self = shift;
-                Playwright::Base::_request($self, args => [@_], command => $method, object => $self->{guid}, type => $self->{type} );
-            },
-            as   => $renamed,
-            into => $class,
-        }) unless $self->can($renamed);
-    }
 
     return ($self);
 }

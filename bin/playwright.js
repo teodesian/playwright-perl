@@ -35,6 +35,9 @@ const port = argv.port || 6969;
 var objects = {};
 var browsers = { 'firefox' : firefox, 'chrome' : chromium, 'webkit' : webkit };
 
+//Stash for users to put data in
+var userdata = {};
+
 app.use(express.json())
 
 app.post('/session', async (req, res) => {
@@ -113,6 +116,16 @@ app.post('/command', async (req, res) => {
             if (res && res._guid) {
                 objects[res._guid] = res;
             }
+        } catch (e) {
+            result = { error : true, message : e.message };
+        }
+    // Allow creation of event listeners if we can actually wait for them
+    } else if (command == 'on' && subject && spec[type].members.waitForEvent ) {
+        try {
+            var evt = args.shift();
+            const cb  = new Function (args.shift());
+            subject.on(evt,cb);
+            result = { error : false, message : "Listener set up" };
         } catch (e) {
             result = { error : true, message : e.message };
         }

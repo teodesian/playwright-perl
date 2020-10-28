@@ -93,7 +93,7 @@ Creates a new browser and returns a handle to interact with it.
 
 =cut
 
-our ($spec, $server_bin, %mapper);
+our ($spec, $server_bin, %mapper, %methods_to_rename);
 
 BEGIN {
     my $path2here = File::Basename::dirname(Cwd::abs_path($INC{'Playwright.pm'}));
@@ -103,6 +103,16 @@ BEGIN {
     my $spec_raw = File::Slurper::read_text($specfile);
     my $decoder = JSON::MaybeXS->new();
     $spec = $decoder->decode($spec_raw);
+
+    $mapper{mouse}    = sub { my ($self, $res) = @_; return Playwright::Mouse->new( handle => $self, id => $res->{_guid}, type => 'Mouse' ) };
+    $mapper{keyboard} = sub { my ($self, $res) = @_; return Playwright::Keyboard->new( handle => $self, id => $res->{_guid}, type => 'Keyboard' ) };
+
+    %methods_to_rename = (
+        '$'      => 'select',
+        '$$'     => 'selectMulti',
+        '$eval'  => 'eval',
+        '$$eval' => 'evalMulti',
+    );
 
     foreach my $class (keys(%$spec)) {
         $mapper{$class} = sub {
@@ -121,10 +131,37 @@ BEGIN {
             as   => 'new',
             into => "Playwright::$class",
         });
-    }
 
-    $mapper{mouse}    = sub { my ($self, $res) = @_; return Playwright::Mouse->new( handle => $self, id => $res->{_guid}, type => 'Mouse' ) };
-    $mapper{keyboard} = sub { my ($self, $res) = @_; return Playwright::Keyboard->new( handle => $self, id => $res->{_guid}, type => 'Keyboard' ) };
+        # Hack in mouse and keyboard objects for the Page class
+        if ($class eq 'Page') {
+            foreach my $hid (qw{keyboard mouse}) {
+                Sub::Install::install_sub({
+                    code => sub {
+                        my $self = shift;
+                        $Playwright::mapper{$hid}->($self, { _type => $self->{type}, _guid => $self->{guid} }) if exists $Playwright::mapper{$hid};
+                    },
+                    as   => $hid,
+                    into => "Playwright::$class",
+                });
+            }
+        }
+
+        # Install the subroutines if they aren't already
+        foreach my $method ((keys(%{$spec->{$class}{members}}), 'on')) {
+            next if grep { $_ eq $method } qw{keyboard mouse};
+            my $renamed = exists $methods_to_rename{$method} ? $methods_to_rename{$method} : $method;
+
+            print "Installing sub $renamed into Playwright::$class\n";
+            Sub::Install::install_sub({
+                code => sub {
+                    my $self = shift;
+                    Playwright::Base::_request($self, args => [@_], command => $method, object => $self->{guid}, type => $self->{type} );
+                },
+                as   => $renamed,
+                into => "Playwright::$class",
+            });
+        }
+    }
 
     # Make sure it's possible to start the server
     $server_bin = "$path2here/../bin/playwright.js";
@@ -140,6 +177,7 @@ sub new ($class, %options) {
         port    => $port,
         debug   => $options{debug},
         pid     => _start_server( $port, $options{debug}),
+        parent  => $$,
     }, $class);
 
     return $self;
@@ -172,6 +210,9 @@ Automatically called when the Playwright object goes out of scope.
 =cut
 
 sub quit ($self) {
+    #Prevent destructor from firing in child processes so we can do things like async()
+    return unless $$ == $self->{parent};
+
     Playwright::Util::request ('GET', 'shutdown', $self->{port}, $self->{ua} ); 
     return waitpid($self->{pid},0);
 }

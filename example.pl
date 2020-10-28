@@ -3,6 +3,8 @@ use warnings;
 
 use Data::Dumper;
 use JSON::PP;
+use Async;
+
 use Playwright;
 
 use Try::Tiny;
@@ -46,6 +48,21 @@ my $fun = "
     };";
 my $result = $page->evaluate($fun, 'zippy');
 print Dumper($result);
+
+# Read the console
+$page->on('console',"return [...arguments]");
+
+#XXX this is unfortunately stringifying this object
+my $proc = Async->new( sub {
+    return $page->waitForEvent('console');
+});
+$page->evaluate("console.log('hug')");
+my $console_log = $proc->result(1);
+
+use Data::Dumper;
+print Dumper($console_log);
+
+#print "Logged to console: '".$console_log->text()."'\n";
 
 # Use a selector to find which input is visible and type into it
 # Ideally you'd use a better selector to solve this problem, but this is just showing off
