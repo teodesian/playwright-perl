@@ -22,7 +22,7 @@ use Playwright::Util();
 no warnings 'experimental';
 use feature qw{signatures state};
 
-=head2 SYNOPSIS
+=head1 SYNOPSIS
 
     use JSON::PP;
     use Playwright;
@@ -34,7 +34,7 @@ use feature qw{signatures state};
     my $frameset = $page->mainFrame();
     my $kidframes = $frameset->childFrames();
 
-=head2 DESCRIPTION
+=head1 DESCRIPTION
 
 Perl interface to a lightweight node.js webserver that proxies commands runnable by Playwright.
 Currently understands commands you can send to all the playwright classes defined in api.json.
@@ -44,7 +44,7 @@ for what the classes do, and their usage.
 
 There are two major exceptions in how things work versus the documentation.
 
-=head3 Selectors
+=head2 Selectors
 
 The selector functions have to be renamed from starting with $ for obvious reasons.
 The renamed functions are as follows:
@@ -63,7 +63,7 @@ The renamed functions are as follows:
 
 These functions are present as part of the Page, Frame and ElementHandle classes.
 
-=head3 Scripts
+=head2 Scripts
 
 The evaluate() and evaluateHandle() functions can only be run in string mode.
 To maximize the usefulness of these, I have wrapped the string passed with the following function:
@@ -80,6 +80,17 @@ L<https://playwright.dev/#version=master&path=docs%2Fapi.md&q=pageevaluatepagefu
 
 You will have to refer to the arguments array as described here:
 L<https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/arguments> 
+
+=head2 Asynchronous operations
+
+The waitFor* methods defined on various classes will return an instance of L<AsyncData>, a part of the L<Async> module.
+You will then need to wait on the result of the backgrounded action with the await() method documented below.
+
+    # Assuming $handle is a Playwright object
+    my $async = $page->waitForEvent('console');
+    $page->evaluate('console.log("whee")');
+    my $result = $handle->await( $async );
+    my $logged = $result->text();
 
 =head1 CONSTRUCTOR
 
