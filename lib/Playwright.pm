@@ -5,6 +5,10 @@ use warnings;
 
 use sigtrap qw/die normal-signals/;
 
+require Exporter;
+our @ISA = qw(Exporter);
+our @EXPORT_OK = qw(await);
+
 use File::Basename();
 use Cwd();
 use LWP::UserAgent();
@@ -151,7 +155,6 @@ BEGIN {
             next if grep { $_ eq $method } qw{keyboard mouse};
             my $renamed = exists $methods_to_rename{$method} ? $methods_to_rename{$method} : $method;
 
-            print "Installing sub $renamed into Playwright::$class\n";
             Sub::Install::install_sub({
                 code => sub {
                     my $self = shift;
@@ -199,6 +202,19 @@ sub launch ($self, %args) {
     my $msg = Playwright::Util::request ('POST', 'session', $self->{port}, $self->{ua}, type => delete $args{type}, args => [\%args] );
     return $Playwright::mapper{$msg->{_type}}->($self,$msg) if (ref $msg eq 'HASH') && $msg->{_type} && exists $Playwright::mapper{$msg->{_type}};
     return $msg;
+}
+
+=head2 await (Playwright::Promise) = MIXED
+
+Waits for an asynchronous operation returned by the waitFor* methods to complete and returns the value.
+
+=cut
+
+sub await ($self, $promise) {
+    confess("Input must be an AsyncData") unless $promise->isa('AsyncData');
+    my $obj = $promise->result(1);
+    my $class = "Playwright::$obj->{_type}";
+    return $class->new( type => $obj->{_type}, id => $obj->{_guid}, handle => $self ); 
 }
 
 =head2 quit, DESTROY

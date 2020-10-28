@@ -3,7 +3,6 @@ use warnings;
 
 use Data::Dumper;
 use JSON::PP;
-use Async;
 
 use Playwright;
 
@@ -52,17 +51,11 @@ print Dumper($result);
 # Read the console
 $page->on('console',"return [...arguments]");
 
-#XXX this is unfortunately stringifying this object
-my $proc = Async->new( sub {
-    return $page->waitForEvent('console');
-});
+my $promise = $page->waitForEvent('console');
 $page->evaluate("console.log('hug')");
-my $console_log = $proc->result(1);
+my $console_log = $handle->await( $promise );
 
-use Data::Dumper;
-print Dumper($console_log);
-
-#print "Logged to console: '".$console_log->text()."'\n";
+print "Logged to console: '".$console_log->text()."'\n";
 
 # Use a selector to find which input is visible and type into it
 # Ideally you'd use a better selector to solve this problem, but this is just showing off

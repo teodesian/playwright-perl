@@ -5,6 +5,7 @@ use warnings;
 
 use Sub::Install();
 
+use Async;
 use Playwright::Util();
 
 #ABSTRACT: Object representing Playwright pages
@@ -59,9 +60,9 @@ sub new ($class, %options) {
 }
 
 sub _request ($self, %args) {
-    my $msg = Playwright::Util::request ('POST', 'command', $self->{port}, $self->{ua}, %args);
+    return AsyncData->new( sub { &Playwright::Base::_do($self, %args) }) if $args{command} =~ m/^waitFor/;
 
-    #TODO Check spec and see if we need to coerce a bool
+    my $msg = Playwright::Base::_do->($self,%args);
 
     if (ref $msg eq 'ARRAY') {
         @$msg = map {
@@ -72,6 +73,10 @@ sub _request ($self, %args) {
     }
     return $Playwright::mapper{$msg->{_type}}->($self,$msg) if (ref $msg eq 'HASH') && $msg->{_type} && exists $Playwright::mapper{$msg->{_type}};
     return $msg;
+}
+
+sub _do ($self, %args) {
+    return Playwright::Util::request ('POST', 'command', $self->{port}, $self->{ua}, %args);
 }
 
 1;
