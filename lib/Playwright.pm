@@ -5,10 +5,6 @@ use warnings;
 
 use sigtrap qw/die normal-signals/;
 
-require Exporter;
-our @ISA = qw(Exporter);
-our @EXPORT_OK = qw(await);
-
 use File::Basename();
 use Cwd();
 use LWP::UserAgent();
