@@ -64,6 +64,9 @@ sub _request ($self, %args) {
 
     my $msg = Playwright::Base::_do->($self,%args);
 
+    use Data::Dumper;
+    print Dumper($msg);
+
     if (ref $msg eq 'ARRAY') {
         @$msg = map {
             my $subject = $_;

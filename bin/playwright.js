@@ -112,6 +112,11 @@ app.post('/command', async (req, res) => {
                 res._guid = 'Video@' + uuidv4();
                 res._type = 'Video';
             }
+            // XXX So are FileChooser object unfortunately
+            if (args[0] == 'filechooser' && res) {
+                res._guid = 'FileChooser@' + uuidv4();
+                res._type = 'FileChooser';
+            }
 
             if (res && res._guid) {
                 objects[res._guid] = res;

@@ -105,3 +105,10 @@ $page->select('#d-lo')->click();
 
 my $download = $handle->await( $promise );
 $download->saveAs('test2.jpg');
+
+# Fiddle with file inputs
+my $choochoo = $page->waitForEvent('filechooser');
+$page->select('#drphil')->click();
+my $chooseu = $handle->await( $choochoo );
+$chooseu->setFiles('test.jpg');
+

@@ -220,6 +220,8 @@ Waits for an asynchronous operation returned by the waitFor* methods to complete
 sub await ($self, $promise) {
     confess("Input must be an AsyncData") unless $promise->isa('AsyncData');
     my $obj = $promise->result(1);
+    use Data::Dumper;
+    print Dumper($obj);
     my $class = "Playwright::$obj->{_type}";
     return $obj unless $class;
     return $class->new( type => $obj->{_type}, id => $obj->{_guid}, handle => $self ); 
