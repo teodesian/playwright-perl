@@ -84,4 +84,18 @@ $mouse->move( 0, 0 );
 my $keyboard = $page->keyboard();
 $keyboard->type('F12');
 
+# Start to do some more advanced actions with the page
+use FindBin;
+use Cwd qw{abs_path};
+my $pg = abs_path("$FindBin::Bin/at/test.html");
+
+# Handle dialogs on page start, and dialog after dialog
+$promise = $page->waitForEvent('dialog');
+$page->goto("file://$pg");
+
+my $dlg = $handle->await($promise);
+$promise = $page->waitForEvent('dialog');
+$dlg->dismiss();
+$dlg = $handle->await($promise);
+$dlg->accept();
 

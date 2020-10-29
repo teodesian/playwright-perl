@@ -3,3 +3,7 @@ cover_db/*
 .travis.yml
 weaver.ini
 .git/*
+video/*
+test.jpg
+package-lock.json
+node_modules/*
