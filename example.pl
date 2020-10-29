@@ -14,7 +14,7 @@ my $handle = Playwright->new( debug => 1 );
 my $browser = $handle->launch( headless => JSON::PP::false, type => 'chrome' );
 
 # Open a tab therein
-my $page = $browser->newPage({ videosPath => 'video' });
+my $page = $browser->newPage({ videosPath => 'video', acceptDownloads => JSON::PP::true });
 my $bideo = $page->video;
 
 my $vidpath = $bideo->path;
@@ -99,3 +99,9 @@ $dlg->dismiss();
 $dlg = $handle->await($promise);
 $dlg->accept();
 
+# Download stuff -- note this requries acceptDownloads = true in the page open
+$promise = $page->waitForEvent('download');
+$page->select('#d-lo')->click();
+
+my $download = $handle->await( $promise );
+$download->saveAs('test2.jpg');
