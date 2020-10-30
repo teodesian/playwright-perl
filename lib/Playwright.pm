@@ -12,6 +12,8 @@ use Sub::Install();
 use Net::EmptyPort();
 use JSON::MaybeXS();
 use File::Slurper();
+use File::Which();
+use Capture::Tiny qw{capture_stderr};
 use Carp qw{confess};
 
 use Playwright::Base();
@@ -104,7 +106,7 @@ Creates a new browser and returns a handle to interact with it.
 
 =cut
 
-our ($spec, $server_bin, %mapper, %methods_to_rename);
+our ($spec, $server_bin, $node_bin, %mapper, %methods_to_rename);
 
 BEGIN {
     my $path2here = File::Basename::dirname(Cwd::abs_path($INC{'Playwright.pm'}));
@@ -176,6 +178,31 @@ BEGIN {
     # Make sure it's possible to start the server
     $server_bin = "$path2here/../bin/playwright.js";
     confess("Can't locate Playwright server in '$server_bin'!") unless -f $specfile;
+
+    #TODO make this portable with File::Which etc
+    # Check that node and npm are installed
+    $node_bin = File::Which::which('node');
+    confess("node must exist and be executable") unless -x $node_bin;
+
+    # Check for the necessary modules, this relies on package.json
+    my $npm_bin = File::Which::which('npm');
+    confess("npm must exist and be executable") unless -x $npm_bin;
+    my $dep_raw;
+    capture_stderr { $dep_raw = qx{$npm_bin list --json} };
+    confess("Could not list available node modules!") unless $dep_raw;
+
+    chomp $dep_raw;
+    my $deptree = $decoder->decode($dep_raw);
+    my @deps = map { $deptree->{dependencies}{$_} } keys(%{$deptree->{dependencies}});
+    if ( grep { $_->{missing} } @deps ) {
+        my $err = capture_stderr { qx{npm i} };
+        my $exit = $? >> 8;
+        # Ignore failing for bogus reasons
+        if ($err !~ m/package-lock/) {
+            confess("Error installing node dependencies:\n$err") unless $exit;
+        }
+    }
+
 }
 
 sub new ($class, %options) {
@@ -260,7 +287,7 @@ sub _start_server($port, $debug) {
         return $pid;
     }
 
-    exec( $server_bin, "-p", $port, $debug);
+    exec( $node_bin, $server_bin, "-p", $port, $debug);
 }
 
 1;

@@ -1,0 +1,13 @@
+{
+  "name": "playwright-server-perl",
+  "version": "1.0.0",
+  "description": "A playwright server built for the Perl interface to playwright",
+  "main": "bin/playwright.js",
+  "private": true,
+  "dependencies": {
+    "express": "^4.17",
+    "playwright": "^1.5",
+    "yargs": "^16.1",
+    "uuid": "^8.3"
+  }
+}
