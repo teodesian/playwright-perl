@@ -205,7 +205,10 @@ There is an additional "special" argument, that of 'type', which is used to spec
 =cut
 
 sub launch ($self, %args) {
-    #TODO coerce types based on spec
+
+    Playwright::Base::_coerce($spec->{BrowserType}{members}, args => [\%args], command => 'launch' );
+    delete $args{command};
+
     my $msg = Playwright::Util::request ('POST', 'session', $self->{port}, $self->{ua}, type => delete $args{type}, args => [\%args] );
     return $Playwright::mapper{$msg->{_type}}->($self,$msg) if (ref $msg eq 'HASH') && $msg->{_type} && exists $Playwright::mapper{$msg->{_type}};
     return $msg;
@@ -220,8 +223,6 @@ Waits for an asynchronous operation returned by the waitFor* methods to complete
 sub await ($self, $promise) {
     confess("Input must be an AsyncData") unless $promise->isa('AsyncData');
     my $obj = $promise->result(1);
-    use Data::Dumper;
-    print Dumper($obj);
     my $class = "Playwright::$obj->{_type}";
     return $obj unless $class;
     return $class->new( type => $obj->{_type}, id => $obj->{_guid}, handle => $self ); 

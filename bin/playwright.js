@@ -49,7 +49,7 @@ app.post('/session', async (req, res) => {
     var result;
     if ( type && browsers[type] ) {
         try {
-            var browser = await firefox.launch(...args);
+            var browser = await browsers[type].launch(...args);
             objects[browser._guid] = browser;
             result = { error : false, message : browser };
         } catch (e) {

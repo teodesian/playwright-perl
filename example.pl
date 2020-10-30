@@ -2,7 +2,6 @@ use strict;
 use warnings;
 
 use Data::Dumper;
-use JSON::PP;
 
 use Playwright;
 
@@ -11,10 +10,10 @@ use Try::Tiny;
 my $handle = Playwright->new( debug => 1 );
 
 # Open a new chrome instance
-my $browser = $handle->launch( headless => JSON::PP::false, type => 'chrome' );
+my $browser = $handle->launch( headless => 0, type => 'firefox' );
 
 # Open a tab therein
-my $page = $browser->newPage({ videosPath => 'video', acceptDownloads => JSON::PP::true });
+my $page = $browser->newPage({ videosPath => 'video', acceptDownloads => 1 });
 my $bideo = $page->video;
 
 my $vidpath = $bideo->path;
@@ -79,7 +78,6 @@ $actual_input->screenshot({ path => 'test.jpg' });
 
 # Fiddle with HIDs
 my $mouse = $page->mouse;
-print "GOT HERE\n";
 $mouse->move( 0, 0 );
 my $keyboard = $page->keyboard();
 $keyboard->type('F12');
@@ -90,8 +88,9 @@ use Cwd qw{abs_path};
 my $pg = abs_path("$FindBin::Bin/at/test.html");
 
 # Handle dialogs on page start, and dialog after dialog
+# NOTE -- the 'load' event won't fire until the dialog is dismissed in some browsers 
 $promise = $page->waitForEvent('dialog');
-$page->goto("file://$pg");
+$page->goto("file://$pg", { waitUntil => 'networkidle' });
 
 my $dlg = $handle->await($promise);
 $promise = $page->waitForEvent('dialog');
@@ -100,6 +99,8 @@ $dlg = $handle->await($promise);
 $dlg->accept();
 
 # Download stuff -- note this requries acceptDownloads = true in the page open
+# NOTE -- the 'download' event fires unreliably, as not all browsers properly obey the 'download' property in hrefs.
+# Chrome, for example would choke here on an intermediate dialog.
 $promise = $page->waitForEvent('download');
 $page->select('#d-lo')->click();
 
