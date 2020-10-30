@@ -39,6 +39,8 @@ use feature qw{signatures state};
 =head1 DESCRIPTION
 
 Perl interface to a lightweight node.js webserver that proxies commands runnable by Playwright.
+Checks and automatically installs a copy of the node dependencies in the local folder if needed.
+
 Currently understands commands you can send to all the playwright classes defined in api.json.
 
 See L<https://playwright.dev/#version=master&path=docs%2Fapi.md&q=>

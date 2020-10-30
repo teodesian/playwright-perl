@@ -9,7 +9,8 @@ Finally, a solution!
 ## Here's how it works
 
 A little node webserver written in [express][xp] is spun up which exposes the entire playwright API.
-You build a bunch of little actions to do much like action chains in Selenium, and then make 'em go whir.
+We ensure the node deps are installed in a BEGIN block, and then spin up the proxy server.
+You then use playwright more or less as normal; see the POD in Playwright.pm for more details.
 
 See example.pl for usage examples.
 

@@ -13,7 +13,6 @@ const fs = require('fs');
 let rawdata = fs.readFileSync('api.json');
 let spec = JSON.parse(rawdata);
 
-//TODO support device commands
 const argv = yargs
     .option('debug', {
         alias: 'd',
