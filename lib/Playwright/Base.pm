@@ -39,14 +39,6 @@ Creates a new page and returns a handle to interact with it.
 
 =cut
 
-sub AUTOLOAD {
-    our $AUTOLOAD;
-    my $method = $AUTOLOAD;
-    my ($self,@args) = @_;
-
-    return Playwright::Base::_request($self, args => [@args], command => $method, object => $self->{guid}, type => $self->{type} );
-}
-
 sub new ($class, %options) {
 
     my $self = bless({
