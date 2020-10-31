@@ -1,4 +1,4 @@
-use Test2::V0 -target => 'Playwright::Base';
+use Test2::V0 -target => 'Playwright::Util';
 use Test2::Tools::Explain;
 use Playwright::Util;
 use Test::MockModule qw{strict};

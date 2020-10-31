@@ -110,7 +110,37 @@ Creates a new browser and returns a handle to interact with it.
 
 our ($spec, $server_bin, $node_bin, %mapper, %methods_to_rename);
 
-BEGIN {
+sub _check_node($path2here, $decoder) {
+    # Make sure it's possible to start the server
+    $server_bin = "$path2here/../bin/playwright.js";
+    confess("Can't locate Playwright server in '$server_bin'!") unless -f $server_bin;
+
+    #TODO make this portable with File::Which etc
+    # Check that node and npm are installed
+    $node_bin = File::Which::which('node');
+    confess("node must exist and be executable") unless -x $node_bin;
+
+    # Check for the necessary modules, this relies on package.json
+    my $npm_bin = File::Which::which('npm');
+    confess("npm must exist and be executable") unless -x $npm_bin;
+    my $dep_raw;
+    capture_stderr { $dep_raw = qx{$npm_bin list --json} };
+    confess("Could not list available node modules!") unless $dep_raw;
+
+    chomp $dep_raw;
+    my $deptree = $decoder->decode($dep_raw);
+    my @deps = map { $deptree->{dependencies}{$_} } keys(%{$deptree->{dependencies}});
+    if ( grep { $_->{missing} } @deps ) {
+        my $err = capture_stderr { qx{npm i} };
+        my $exit = $? >> 8;
+        # Ignore failing for bogus reasons
+        if ($err !~ m/package-lock/) {
+            confess("Error installing node dependencies:\n$err") if $exit;
+        }
+    }
+}
+
+sub _check_and_build_spec {
     my $path2here = File::Basename::dirname(Cwd::abs_path($INC{'Playwright.pm'}));
     my $specfile = "$path2here/../api.json";
     confess("Can't locate Playwright specification in '$specfile'!") unless -f $specfile;
@@ -118,7 +148,10 @@ BEGIN {
     my $spec_raw = File::Slurper::read_text($specfile);
     my $decoder = JSON::MaybeXS->new();
     $spec = $decoder->decode($spec_raw);
+    return ($path2here, $decoder);
+}
 
+sub _build_classes {
     $mapper{mouse}    = sub { my ($self, $res) = @_; return Playwright::Mouse->new( handle => $self, id => $res->{_guid}, type => 'Mouse' ) };
     $mapper{keyboard} = sub { my ($self, $res) = @_; return Playwright::Keyboard->new( handle => $self, id => $res->{_guid}, type => 'Keyboard' ) };
 
@@ -177,34 +210,15 @@ BEGIN {
         }
     }
 
-    # Make sure it's possible to start the server
-    $server_bin = "$path2here/../bin/playwright.js";
-    confess("Can't locate Playwright server in '$server_bin'!") unless -f $specfile;
+}
 
-    #TODO make this portable with File::Which etc
-    # Check that node and npm are installed
-    $node_bin = File::Which::which('node');
-    confess("node must exist and be executable") unless -x $node_bin;
-
-    # Check for the necessary modules, this relies on package.json
-    my $npm_bin = File::Which::which('npm');
-    confess("npm must exist and be executable") unless -x $npm_bin;
-    my $dep_raw;
-    capture_stderr { $dep_raw = qx{$npm_bin list --json} };
-    confess("Could not list available node modules!") unless $dep_raw;
-
-    chomp $dep_raw;
-    my $deptree = $decoder->decode($dep_raw);
-    my @deps = map { $deptree->{dependencies}{$_} } keys(%{$deptree->{dependencies}});
-    if ( grep { $_->{missing} } @deps ) {
-        my $err = capture_stderr { qx{npm i} };
-        my $exit = $? >> 8;
-        # Ignore failing for bogus reasons
-        if ($err !~ m/package-lock/) {
-            confess("Error installing node dependencies:\n$err") unless $exit;
-        }
+BEGIN {
+    our $SKIP_BEGIN;
+    if (! $SKIP_BEGIN ) {
+        my ($path2here, $decoder) = _check_and_build_spec();
+        _build_classes();
+        _check_node($path2here, $decoder);
     }
-
 }
 
 sub new ($class, %options) {
@@ -252,8 +266,8 @@ Waits for an asynchronous operation returned by the waitFor* methods to complete
 sub await ($self, $promise) {
     confess("Input must be an AsyncData") unless $promise->isa('AsyncData');
     my $obj = $promise->result(1);
+    return $obj unless $obj->{_type};
     my $class = "Playwright::$obj->{_type}";
-    return $obj unless $class;
     return $class->new( type => $obj->{_type}, id => $obj->{_guid}, handle => $self ); 
 }
 
