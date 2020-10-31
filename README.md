@@ -18,7 +18,13 @@ See example.pl for usage examples.
 [pw]:https://github.com/microsoft/playwright
 [srd]:https://metacpan.org/pod/Selenium::Remote::Driver
 [xp]:http://expressjs.com/
-[xs]:https://metacpan.org/pod/Promise::XS
+
+# Supported Perls
+
+Everything newer than 5.28 is supported.
+
+Things should work on 5.20 or newer, but...
+Tests might fail due to Temp file weirdness with Test::MockFile.
 
 ## How2develop
 
@@ -27,10 +33,12 @@ I assume you know how to get cpanm.
 
 You might want to use distro packages for some of these:
 
+```
 sudo cpanm Dist::Zilla
 dzil authordeps --missing | sudo cpanm
 dzil listdeps --missing | sudo cpanm
+```
 
 Actually running stuff:
 
-perl -Ilib example.pl
+`perl -Ilib example.pl`
