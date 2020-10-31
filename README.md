@@ -1,4 +1,5 @@
-# playwright-perl
+# playwright-perl [![Build Status](https://travis-ci.org/teodesian/playwright-perl.svg?branch=main)](https://travis-ci.org/teodesian/playwright-perl) [![Coverage Status](https://coveralls.io/repos/github/teodesian/playwright-perl/badge.svg?branch=main)](https://coveralls.io/github/teodesian/playwright-perl?branch=main)
+
 Perl bindings for [playwright][pw], the amazing cross browser testing framework from Microsoft
 
 ## Has this ever happened to you?
@@ -21,6 +22,15 @@ See example.pl for usage examples.
 
 ## How2develop
 
-npm i playwright express uuid yargs
+Everything should more or less set itself up automatically, or explode and tell you what to do.
+I assume you know how to get cpanm.
+
+You might want to use distro packages for some of these:
+
+sudo cpanm Dist::Zilla
+dzil authordeps --missing | sudo cpanm
+dzil listdeps --missing | sudo cpanm
+
+Actually running stuff:
 
 perl -Ilib example.pl
