@@ -15,6 +15,7 @@ nytprof.out
 
 # Dizt::Zilla
 /.build/
+Playwright-*/
 
 # Module::Build
 _build/

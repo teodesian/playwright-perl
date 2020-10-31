@@ -40,7 +40,7 @@ var userdata = {};
 app.use(express.json())
 
 app.post('/session', async (req, res) => {
-	var payload = req.body;
+    var payload = req.body;
     var type    = payload.type;
     var args    = payload.args || [];
 

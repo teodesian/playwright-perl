@@ -45,7 +45,7 @@ local *Playwright::Fake::new = sub {
         type => $options{type},
         guid => $options{id},
         ua   => $options{handle}{ua},
-        port => $options{handle}{port}, 
+        port => $options{handle}{port},
     }, $class);
 };
 use warnings;

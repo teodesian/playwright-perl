@@ -83,7 +83,7 @@ The same restriction on only being able to pass one arg remains from the upstrea
 L<https://playwright.dev/#version=master&path=docs%2Fapi.md&q=pageevaluatepagefunction-arg>
 
 You will have to refer to the arguments array as described here:
-L<https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/arguments> 
+L<https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/arguments>
 
 =head2 Asynchronous operations
 
@@ -268,7 +268,7 @@ sub await ($self, $promise) {
     my $obj = $promise->result(1);
     return $obj unless $obj->{_type};
     my $class = "Playwright::$obj->{_type}";
-    return $class->new( type => $obj->{_type}, id => $obj->{_guid}, handle => $self ); 
+    return $class->new( type => $obj->{_type}, id => $obj->{_guid}, handle => $self );
 }
 
 =head2 quit, DESTROY
@@ -283,7 +283,7 @@ sub quit ($self) {
     #Prevent destructor from firing in child processes so we can do things like async()
     return unless $$ == $self->{parent};
 
-    Playwright::Util::request ('GET', 'shutdown', $self->{port}, $self->{ua} ); 
+    Playwright::Util::request ('GET', 'shutdown', $self->{port}, $self->{ua} );
     return waitpid($self->{pid},0);
 }
 
