@@ -143,8 +143,7 @@ sub _check_node {
 
     {
         #XXX the node Depsolver is deranged, global modules DO NOT WORK
-        my $curdir = File::Basename::dirname($server_bin);
-        my $stack = pushd(File::Basename::dirname($server_bin));
+        my $curdir = pushd(File::Basename::dirname($server_bin));
         capture_stderr { $dep_raw = qx{$npm_bin list --json} };
         confess("Could not list available node modules!") unless $dep_raw;
 
