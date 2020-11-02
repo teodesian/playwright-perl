@@ -8,12 +8,12 @@ const express = require('express');
 const { chromium, firefox, webkit, devices } = require('playwright');
 
 const fs = require('fs');
+const path = require('path');
 
 // Defines our interface
-let sharedir = "%SHAREDIR%"; // This is going to be filled in via a build script
-var theFile = 'share/api.json';
-theFile = fs.existsSync(theFile) ? theFile : sharedir + '/api.json';
-let rawdata = fs.readFileSync('share/api.json');
+let sharedir = require.resolve('playwright'); // api.json should be shipped with playwright itself
+var theFile = path.dirname(sharedir) + '/api.json';
+let rawdata = fs.readFileSync(theFile);
 let spec = JSON.parse(rawdata);
 
 const argv = yargs
