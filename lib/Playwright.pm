@@ -41,7 +41,7 @@ use feature qw{signatures state};
 Perl interface to a lightweight node.js webserver that proxies commands runnable by Playwright.
 Checks and automatically installs a copy of the node dependencies in the local folder if needed.
 
-Currently understands commands you can send to all the playwright classes defined in api.json.
+Currently understands commands you can send to all the playwright classes defined in api.json (installed wherever your OS puts shared files for CPAN distributions).
 
 See L<https://playwright.dev/#version=master&path=docs%2Fapi.md&q=>
 for what the classes do, and their usage.
@@ -142,7 +142,7 @@ sub _check_node($path2here, $decoder) {
 
 sub _check_and_build_spec {
     my $path2here = File::Basename::dirname(Cwd::abs_path($INC{'Playwright.pm'}));
-    my $specfile = "$path2here/../api.json";
+    my $specfile = "$path2here/../share/api.json";
     confess("Can't locate Playwright specification in '$specfile'!") unless -f $specfile;
 
     my $spec_raw = File::Slurper::read_text($specfile);

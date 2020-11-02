@@ -10,7 +10,7 @@ const { chromium, firefox, webkit, devices } = require('playwright');
 const fs = require('fs');
 
 // Defines our interface
-let rawdata = fs.readFileSync('api.json');
+let rawdata = fs.readFileSync('share/api.json');
 let spec = JSON.parse(rawdata);
 
 const argv = yargs

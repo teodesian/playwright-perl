@@ -18,11 +18,11 @@ my $path2here = File::Basename::dirname(Cwd::abs_path($INC{'Playwright.pm'}));
 
 subtest "_check_and_build_spec" => sub {
     #Simulate file not existing
-    my $json = Test::MockFile->file("$path2here/../api.json");
+    my $json = Test::MockFile->file("$path2here/../share/api.json");
     like( dies { Playwright::_check_and_build_spec() }, qr/specification/i, "Nonexistant api.json throws");
 
     undef $json;
-    $json = Test::MockFile->file("$path2here/../api.json", '{"a":"b"}');
+    $json = Test::MockFile->file("$path2here/../share/api.json", '{"a":"b"}');
     my ($path) = Playwright::_check_and_build_spec();
     is($Playwright::spec, { a => 'b'}, "Spec parsed correctly");
     is($path,$path2here, "Path to module built correctly");

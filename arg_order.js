@@ -5,7 +5,7 @@
 const fs = require('fs');
 
 // Defines our interface
-let rawdata = fs.readFileSync('api.json');
+let rawdata = fs.readFileSync('share/api.json');
 let spec = JSON.parse(rawdata);
 
 for (var classname of Object.keys(spec)) {
@@ -17,4 +17,4 @@ for (var classname of Object.keys(spec)) {
     }
 }
 
-fs.writeFileSync('api.json',JSON.stringify(spec));
+fs.writeFileSync('share/api.json',JSON.stringify(spec));
