@@ -4,6 +4,7 @@ cover_db/*
 weaver.ini
 .git/*
 video/*
+at/*
 test.jpg
 test2.jpg
 package-lock.json

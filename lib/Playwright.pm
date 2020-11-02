@@ -98,6 +98,11 @@ You will then need to wait on the result of the backgrounded action with the awa
     my $result = $handle->await( $async );
     my $logged = $result->text();
 
+=head1 INSTALLATION NOTE
+
+If you install this module from CPAN, you will likely encounter a croak() telling you to install node module dependencies.
+Follow the instructions and things should be just fine.
+
 =head1 CONSTRUCTOR
 
 =head2 new(HASH) = (Playwright)
