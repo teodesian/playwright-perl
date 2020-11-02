@@ -151,9 +151,6 @@ sub _check_node {
         my @deps = grep {my $subj=$_; grep { $_ eq $subj } @needed } @has;
         my $need_deps = scalar(@deps) != scalar(@needed);
 
-        use Data::Dumper;
-        print Dumper(\@deps);
-
         #This is really just for developers
         if ( $need_deps ) {
             confess("Production install of node dependencies must be done manually by nonroot users. Run the following:\n\n pushd '$curdir' && sudo npm i yargs express playwright uuid; popd\n\n") if $global_install;

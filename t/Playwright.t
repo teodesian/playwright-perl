@@ -85,6 +85,9 @@ subtest "_check_node" => sub {
     my $fakecapture = Test::MockModule->new('Capture::Tiny');
     $fakecapture->redefine('capture_stderr', sub { 'oh no' });
 
+    my $pmock = Test::MockModule->new('File::pushd');
+    $pmock->redefine('pushd', sub {});
+
     $qxret = '';
     like( dies { Playwright::_check_node() }, qr/could not list/i, "package.json not existing throws");
 
