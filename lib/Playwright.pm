@@ -112,7 +112,7 @@ our ($spec, $server_bin, $node_bin, %mapper, %methods_to_rename);
 
 sub _check_node($path2here, $decoder) {
     # Make sure it's possible to start the server
-    $server_bin = "$path2here/../bin/playwright.js";
+    $server_bin = "$path2here/../bin/playwright_server";
     confess("Can't locate Playwright server in '$server_bin'!") unless -f $server_bin;
 
     #TODO make this portable with File::Which etc

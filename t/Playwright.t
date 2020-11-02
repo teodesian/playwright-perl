@@ -63,12 +63,12 @@ subtest "_build_classes" => sub {
 subtest "_check_node" => sub {
     my $decoder = JSON::MaybeXS->new();
 
-    my $bin = Test::MockFile->file("$path2here/../bin/playwright.js");
+    my $bin = Test::MockFile->file("$path2here/../bin/playwright_server");
 
     like( dies { Playwright::_check_node($path2here, $decoder) }, qr/server in/i, "Server not existing throws");
 
     undef $bin;
-    $bin = Test::MockFile->file("$path2here/../bin/playwright.js",'');
+    $bin = Test::MockFile->file("$path2here/../bin/playwright_server",'');
 
     my $which = Test::MockModule->new('File::Which');
     $which->redefine('which', sub { shift eq 'node' ? '/bogus' : '/hokum' });
