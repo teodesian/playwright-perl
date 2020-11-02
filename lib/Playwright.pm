@@ -111,8 +111,10 @@ Creates a new browser and returns a handle to interact with it.
 
 our ( $spec, $server_bin, $node_bin, %mapper, %methods_to_rename );
 
-sub _check_node ( $path2here, $decoder ) {
+sub _check_node {
 
+    my $path2here = File::Basename::dirname( Cwd::abs_path( $INC{'Playwright.pm'} ) );
+    my $decoder  = JSON::MaybeXS->new();
     # Make sure it's possible to start the server
     $server_bin = "$path2here/../bin/playwright_server";
     $server_bin = -f $server_bin ? $server_bin : File::Which::which('playwright_server');
@@ -144,20 +146,6 @@ sub _check_node ( $path2here, $decoder ) {
             confess("Error installing node dependencies:\n$err") if $exit;
         }
     }
-}
-
-sub _check_and_build_spec {
-    my $path2here =
-      File::Basename::dirname( Cwd::abs_path( $INC{'Playwright.pm'} ) );
-    my $specfile = "$path2here/../share/api.json";
-    $specfile = -f $specfile ? $specfile : File::ShareDir::module_dir('Playwright')."/api.json";
-    confess("Can't locate Playwright specification in '$specfile'!")
-      unless -f $specfile;
-
-    my $spec_raw = File::Slurper::read_text($specfile);
-    my $decoder  = JSON::MaybeXS->new();
-    $spec = $decoder->decode($spec_raw);
-    return ( $path2here, $decoder );
 }
 
 sub _build_classes {
@@ -207,7 +195,7 @@ sub _build_classes {
                 as   => 'new',
                 into => "Playwright::$class",
             }
-        );
+        ) unless "Playwright::$class"->can('new');;
 
         # Hack in mouse and keyboard objects for the Page class
         if ( $class eq 'Page' ) {
@@ -227,7 +215,7 @@ sub _build_classes {
                         as   => $hid,
                         into => "Playwright::$class",
                     }
-                );
+                ) unless "Playwright::$class"->can($hid);
             }
         }
 
@@ -254,19 +242,14 @@ sub _build_classes {
                     as   => $renamed,
                     into => "Playwright::$class",
                 }
-            );
+            ) unless "Playwright::$class"->can($renamed);
         }
     }
-
 }
 
-BEGIN {
+sub BEGIN {
     our $SKIP_BEGIN;
-    if ( !$SKIP_BEGIN ) {
-        my ( $path2here, $decoder ) = _check_and_build_spec();
-        _build_classes();
-        _check_node( $path2here, $decoder );
-    }
+    _check_node() unless $SKIP_BEGIN;
 }
 
 sub new ( $class, %options ) {
@@ -284,7 +267,20 @@ sub new ( $class, %options ) {
         $class
     );
 
+    $self->_check_and_build_spec();
+    _build_classes();
+
     return $self;
+}
+
+sub _check_and_build_spec ($self) {
+    return $spec if ref $spec eq 'HASH';
+
+    $spec = Playwright::Util::request(
+        'GET', 'spec', $self->{port}, $self->{ua},
+    );
+
+    return $spec;
 }
 
 =head1 METHODS

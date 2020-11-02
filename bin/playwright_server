@@ -16,6 +16,16 @@ var theFile = path.dirname(sharedir) + '/api.json';
 let rawdata = fs.readFileSync(theFile);
 let spec = JSON.parse(rawdata);
 
+// Establish argument order for callers
+for (var classname of Object.keys(spec)) {
+    for (var method of Object.keys(spec[classname].members)) {
+        var order = 0;
+        for (var arg of Object.keys(spec[classname].members[method].args) ) {
+            spec[classname].members[method].args[arg].order = order++;
+        }
+    }
+}
+
 const argv = yargs
     .option('debug', {
         alias: 'd',
@@ -42,11 +52,14 @@ var userdata = {};
 
 app.use(express.json())
 
+app.get('/spec', async (req, res) => {
+    res.json( { error : false, message : spec } );
+});
+
 app.post('/session', async (req, res) => {
     var payload = req.body;
     var type    = payload.type;
     var args    = payload.args || [];
-
 
     var result;
     if ( type && browsers[type] ) {

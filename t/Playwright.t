@@ -17,15 +17,15 @@ require Playwright;
 my $path2here = File::Basename::dirname(Cwd::abs_path($INC{'Playwright.pm'}));
 
 subtest "_check_and_build_spec" => sub {
-    #Simulate file not existing
-    my $json = Test::MockFile->file("$path2here/../share/api.json");
-    like( dies { Playwright::_check_and_build_spec() }, qr/specification/i, "Nonexistant api.json throws");
+    local $Playwright::spec = {};
 
-    undef $json;
-    $json = Test::MockFile->file("$path2here/../share/api.json", '{"a":"b"}');
-    my ($path) = Playwright::_check_and_build_spec();
-    is($Playwright::spec, { a => 'b'}, "Spec parsed correctly");
-    is($path,$path2here, "Path to module built correctly");
+    is(Playwright::_check_and_build_spec({}),{},"Already defined spec short-circuits");
+
+    my $utilmock = Test::MockModule->new('Playwright::Util');
+    $utilmock->redefine('request', sub { 'eee' });
+
+    undef $Playwright::spec;
+    is(Playwright::_check_and_build_spec({ ua => 'eeep', port => 666}),'eee',"Fetch works when spec undef");
 };
 
 subtest "_build_classes" => sub {
@@ -61,25 +61,24 @@ subtest "_build_classes" => sub {
 };
 
 subtest "_check_node" => sub {
-    my $decoder = JSON::MaybeXS->new();
+    my $which = Test::MockModule->new('File::Which');
+    $which->redefine('which', sub { "$path2here/../bin/playwright_server" });
 
     my $bin = Test::MockFile->file("$path2here/../bin/playwright_server");
-
-    like( dies { Playwright::_check_node($path2here, $decoder) }, qr/server in/i, "Server not existing throws");
+    like( dies { Playwright::_check_node() }, qr/server in/i, "Server not existing throws");
 
     undef $bin;
     $bin = Test::MockFile->file("$path2here/../bin/playwright_server",'');
 
-    my $which = Test::MockModule->new('File::Which');
     $which->redefine('which', sub { shift eq 'node' ? '/bogus' : '/hokum' });
     my $node = Test::MockFile->file('/bogus', undef, { mode => 0777 } );
     my $npm  = Test::MockFile->file('/hokum', undef, { mode => 0777 } );
 
-    like( dies { Playwright::_check_node($path2here, $decoder) }, qr/node must exist/i, "node not existing throws");
+    like( dies { Playwright::_check_node() }, qr/node must exist/i, "node not existing throws");
     undef $node;
     $node = Test::MockFile->file('/bogus', '', { mode => 0777 } );
 
-    like( dies { Playwright::_check_node($path2here, $decoder) }, qr/npm must exist/i, "npm not existing throws");
+    like( dies { Playwright::_check_node() }, qr/npm must exist/i, "npm not existing throws");
     undef $npm;
     $npm  = Test::MockFile->file('/hokum', '', { mode => 0777 } );
 
@@ -87,7 +86,7 @@ subtest "_check_node" => sub {
     $fakecapture->redefine('capture_stderr', sub { 'oh no' });
 
     $qxret = '';
-    like( dies { Playwright::_check_node($path2here, $decoder) }, qr/could not list/i, "package.json not existing throws");
+    like( dies { Playwright::_check_node() }, qr/could not list/i, "package.json not existing throws");
 
     $qxret = '{
         "name": "playwright-server-perl",
@@ -122,7 +121,7 @@ subtest "_check_node" => sub {
     #like( dies { Playwright::_check_node($path2here, $decoder) }, qr/installing node/i, "npm failure throws");
     $fakecapture->redefine('capture_stderr', sub { 'package-lock' });
     $qxcode = 0;
-    ok( lives { Playwright::_check_node($path2here, $decoder) }, "Can run all the way thru") or note $@;
+    ok( lives { Playwright::_check_node() }, "Can run all the way thru") or note $@;
 };
 
 subtest "new" => sub {
@@ -130,10 +129,13 @@ subtest "new" => sub {
     $portmock->redefine('empty_port', sub { 420 });
 
     my $lwpmock = Test::MockModule->new('LWP::UserAgent');
-    $lwpmock->redefine('new', sub { 'LWP' });
+    $lwpmock->redefine('new', sub { bless({},'LWP::UserAgent') });
+    $lwpmock->redefine('request', sub {});
 
     my $selfmock = Test::MockModule->new('Playwright');
     $selfmock->redefine('_start_server', sub { 666 });
+    $selfmock->redefine('_check_and_build_spec', sub {});
+    $selfmock->redefine('_build_classes',sub {});
     $selfmock->redefine('DESTROY', sub {});
 
     my $expected = bless({
@@ -147,7 +149,7 @@ subtest "new" => sub {
     is(Playwright->new( ua => 'whee', debug => 1), $expected, "Constructor functions as expected");
 
     $expected = bless({
-        ua     => 'LWP',
+        ua     => bless({},'LWP::UserAgent'),
         debug  => undef,
         parent => $$,
         pid    => 666,
