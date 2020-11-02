@@ -4,8 +4,8 @@
 
 const yargs = require('yargs');
 const { v4 : uuidv4 } = require('uuid');
-const express = require('express');
 const { chromium, firefox, webkit, devices } = require('playwright');
+const express = require('express');
 
 const fs = require('fs');
 const path = require('path');

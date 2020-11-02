@@ -5,6 +5,7 @@ use warnings;
 
 use sigtrap qw/die normal-signals/;
 
+use File::pushd;
 use File::ShareDir();
 use File::Basename();
 use Cwd();
@@ -113,11 +114,15 @@ our ( $spec, $server_bin, $node_bin, %mapper, %methods_to_rename );
 
 sub _check_node {
 
+    my $global_install = '';
     my $path2here = File::Basename::dirname( Cwd::abs_path( $INC{'Playwright.pm'} ) );
     my $decoder  = JSON::MaybeXS->new();
     # Make sure it's possible to start the server
     $server_bin = "$path2here/../bin/playwright_server";
-    $server_bin = -f $server_bin ? $server_bin : File::Which::which('playwright_server');
+    if (!-f $server_bin ) {
+        $server_bin = File::Which::which('playwright_server');
+        $global_install = 1;
+    }
     confess("Can't locate Playwright server in '$server_bin'!")
       unless -f $server_bin;
 
@@ -130,21 +135,38 @@ sub _check_node {
     my $npm_bin = File::Which::which('npm');
     confess("npm must exist and be executable") unless -x $npm_bin;
     my $dep_raw;
-    capture_stderr { $dep_raw = qx{$npm_bin list --json} };
-    confess("Could not list available node modules!") unless $dep_raw;
 
-    chomp $dep_raw;
-    my $deptree = $decoder->decode($dep_raw);
-    my @deps    = map { $deptree->{dependencies}{$_} }
-      keys( %{ $deptree->{dependencies} } );
-    if ( grep { $_->{missing} } @deps ) {
-        my $err  = capture_stderr { qx{npm i} };
-        my $exit = $? >> 8;
+    {
+        #XXX the node Depsolver is deranged, global modules DO NOT WORK
+        my $curdir = File::Basename::dirname($server_bin);
+        my $stack = pushd(File::Basename::dirname($server_bin));
+        capture_stderr { $dep_raw = qx{$npm_bin list --json} };
+        confess("Could not list available node modules!") unless $dep_raw;
 
-        # Ignore failing for bogus reasons
-        if ( $err !~ m/package-lock/ ) {
-            confess("Error installing node dependencies:\n$err") if $exit;
+        chomp $dep_raw;
+        my $deptree = $decoder->decode($dep_raw);
+
+        my @needed = qw{express uuid yargs playwright};
+        my @has = keys( %{ $deptree->{dependencies} } );
+        my @deps = grep {my $subj=$_; grep { $_ eq $subj } @needed } @has;
+        my $need_deps = scalar(@deps) != scalar(@needed);
+
+        use Data::Dumper;
+        print Dumper(\@deps);
+
+        #This is really just for developers
+        if ( $need_deps ) {
+            confess("Production install of node dependencies must be done manually by nonroot users. Run the following:\n\n pushd '$curdir' && sudo npm i yargs express playwright uuid; popd\n\n") if $global_install;
+
+            my $err  = capture_stderr { qx{npm i} };
+            my $exit = $? >> 8;
+
+            # Ignore failing for bogus reasons
+            if ( $err !~ m/package-lock/ ) {
+                confess("Error installing node dependencies:\n$err") if $exit;
+            }
         }
+
     }
 }
 
