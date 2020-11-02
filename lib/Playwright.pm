@@ -5,6 +5,7 @@ use warnings;
 
 use sigtrap qw/die normal-signals/;
 
+use File::ShareDir();
 use File::Basename();
 use Cwd();
 use LWP::UserAgent();
@@ -108,12 +109,15 @@ Creates a new browser and returns a handle to interact with it.
 
 =cut
 
-our ($spec, $server_bin, $node_bin, %mapper, %methods_to_rename);
+our ( $spec, $server_bin, $node_bin, %mapper, %methods_to_rename );
 
-sub _check_node($path2here, $decoder) {
+sub _check_node ( $path2here, $decoder ) {
+
     # Make sure it's possible to start the server
     $server_bin = "$path2here/../bin/playwright_server";
-    confess("Can't locate Playwright server in '$server_bin'!") unless -f $server_bin;
+    $server_bin = -f $server_bin ? $server_bin : File::Which::which('playwright_server');
+    confess("Can't locate Playwright server in '$server_bin'!")
+      unless -f $server_bin;
 
     #TODO make this portable with File::Which etc
     # Check that node and npm are installed
@@ -129,31 +133,50 @@ sub _check_node($path2here, $decoder) {
 
     chomp $dep_raw;
     my $deptree = $decoder->decode($dep_raw);
-    my @deps = map { $deptree->{dependencies}{$_} } keys(%{$deptree->{dependencies}});
+    my @deps    = map { $deptree->{dependencies}{$_} }
+      keys( %{ $deptree->{dependencies} } );
     if ( grep { $_->{missing} } @deps ) {
-        my $err = capture_stderr { qx{npm i} };
+        my $err  = capture_stderr { qx{npm i} };
         my $exit = $? >> 8;
+
         # Ignore failing for bogus reasons
-        if ($err !~ m/package-lock/) {
+        if ( $err !~ m/package-lock/ ) {
             confess("Error installing node dependencies:\n$err") if $exit;
         }
     }
 }
 
 sub _check_and_build_spec {
-    my $path2here = File::Basename::dirname(Cwd::abs_path($INC{'Playwright.pm'}));
+    my $path2here =
+      File::Basename::dirname( Cwd::abs_path( $INC{'Playwright.pm'} ) );
     my $specfile = "$path2here/../share/api.json";
-    confess("Can't locate Playwright specification in '$specfile'!") unless -f $specfile;
+    $specfile = -f $specfile ? $specfile : File::ShareDir::module_dir('Playwright')."/api.json";
+    confess("Can't locate Playwright specification in '$specfile'!")
+      unless -f $specfile;
 
     my $spec_raw = File::Slurper::read_text($specfile);
-    my $decoder = JSON::MaybeXS->new();
+    my $decoder  = JSON::MaybeXS->new();
     $spec = $decoder->decode($spec_raw);
-    return ($path2here, $decoder);
+    return ( $path2here, $decoder );
 }
 
 sub _build_classes {
-    $mapper{mouse}    = sub { my ($self, $res) = @_; return Playwright::Mouse->new( handle => $self, id => $res->{_guid}, type => 'Mouse' ) };
-    $mapper{keyboard} = sub { my ($self, $res) = @_; return Playwright::Keyboard->new( handle => $self, id => $res->{_guid}, type => 'Keyboard' ) };
+    $mapper{mouse} = sub {
+        my ( $self, $res ) = @_;
+        return Playwright::Mouse->new(
+            handle => $self,
+            id     => $res->{_guid},
+            type   => 'Mouse'
+        );
+    };
+    $mapper{keyboard} = sub {
+        my ( $self, $res ) = @_;
+        return Playwright::Keyboard->new(
+            handle => $self,
+            id     => $res->{_guid},
+            type   => 'Keyboard'
+        );
+    };
 
     %methods_to_rename = (
         '$'      => 'select',
@@ -162,51 +185,76 @@ sub _build_classes {
         '$$eval' => 'evalMulti',
     );
 
-    foreach my $class (keys(%$spec)) {
+    foreach my $class ( keys(%$spec) ) {
         $mapper{$class} = sub {
-            my ($self, $res) = @_;
+            my ( $self, $res ) = @_;
             my $class = "Playwright::$class";
-            return $class->new( handle => $self, id => $res->{_guid}, type => $class );
+            return $class->new(
+                handle => $self,
+                id     => $res->{_guid},
+                type   => $class
+            );
         };
 
         #All of the Playwright::* Classes are made by this MAGIC
-        Sub::Install::install_sub({
-            code => sub ($classname,%options) {
-                @class::ISA = qw{Playwright::Base};
-                $options{type} = $class;
-                return Playwright::Base::new($classname,%options);
-            },
-            as   => 'new',
-            into => "Playwright::$class",
-        });
+        Sub::Install::install_sub(
+            {
+                code => sub ( $classname, %options ) {
+                    @class::ISA = qw{Playwright::Base};
+                    $options{type} = $class;
+                    return Playwright::Base::new( $classname, %options );
+                },
+                as   => 'new',
+                into => "Playwright::$class",
+            }
+        );
 
         # Hack in mouse and keyboard objects for the Page class
-        if ($class eq 'Page') {
+        if ( $class eq 'Page' ) {
             foreach my $hid (qw{keyboard mouse}) {
-                Sub::Install::install_sub({
-                    code => sub {
-                        my $self = shift;
-                        $Playwright::mapper{$hid}->($self, { _type => $self->{type}, _guid => $self->{guid} }) if exists $Playwright::mapper{$hid};
-                    },
-                    as   => $hid,
-                    into => "Playwright::$class",
-                });
+                Sub::Install::install_sub(
+                    {
+                        code => sub {
+                            my $self = shift;
+                            $Playwright::mapper{$hid}->(
+                                $self,
+                                {
+                                    _type => $self->{type},
+                                    _guid => $self->{guid}
+                                }
+                            ) if exists $Playwright::mapper{$hid};
+                        },
+                        as   => $hid,
+                        into => "Playwright::$class",
+                    }
+                );
             }
         }
 
         # Install the subroutines if they aren't already
-        foreach my $method ((keys(%{$spec->{$class}{members}}), 'on')) {
+        foreach my $method ( ( keys( %{ $spec->{$class}{members} } ), 'on' ) ) {
             next if grep { $_ eq $method } qw{keyboard mouse};
-            my $renamed = exists $methods_to_rename{$method} ? $methods_to_rename{$method} : $method;
+            my $renamed =
+              exists $methods_to_rename{$method}
+              ? $methods_to_rename{$method}
+              : $method;
 
-            Sub::Install::install_sub({
-                code => sub {
-                    my $self = shift;
-                    Playwright::Base::_request($self, args => [@_], command => $method, object => $self->{guid}, type => $self->{type} );
-                },
-                as   => $renamed,
-                into => "Playwright::$class",
-            });
+            Sub::Install::install_sub(
+                {
+                    code => sub {
+                        my $self = shift;
+                        Playwright::Base::_request(
+                            $self,
+                            args    => [@_],
+                            command => $method,
+                            object  => $self->{guid},
+                            type    => $self->{type}
+                        );
+                    },
+                    as   => $renamed,
+                    into => "Playwright::$class",
+                }
+            );
         }
     }
 
@@ -214,24 +262,27 @@ sub _build_classes {
 
 BEGIN {
     our $SKIP_BEGIN;
-    if (! $SKIP_BEGIN ) {
-        my ($path2here, $decoder) = _check_and_build_spec();
+    if ( !$SKIP_BEGIN ) {
+        my ( $path2here, $decoder ) = _check_and_build_spec();
         _build_classes();
-        _check_node($path2here, $decoder);
+        _check_node( $path2here, $decoder );
     }
 }
 
-sub new ($class, %options) {
+sub new ( $class, %options ) {
 
     #XXX yes, this is a race, so we need retries in _start_server
     my $port = Net::EmptyPort::empty_port();
-    my $self = bless({
-        ua      => $options{ua} // LWP::UserAgent->new(),
-        port    => $port,
-        debug   => $options{debug},
-        pid     => _start_server( $port, $options{debug}),
-        parent  => $$,
-    }, $class);
+    my $self = bless(
+        {
+            ua     => $options{ua} // LWP::UserAgent->new(),
+            port   => $port,
+            debug  => $options{debug},
+            pid    => _start_server( $port, $options{debug} ),
+            parent => $$,
+        },
+        $class
+    );
 
     return $self;
 }
@@ -247,13 +298,24 @@ There is an additional "special" argument, that of 'type', which is used to spec
 
 =cut
 
-sub launch ($self, %args) {
+sub launch ( $self, %args ) {
 
-    Playwright::Base::_coerce($spec->{BrowserType}{members}, args => [\%args], command => 'launch' );
+    Playwright::Base::_coerce(
+        $spec->{BrowserType}{members},
+        args    => [ \%args ],
+        command => 'launch'
+    );
     delete $args{command};
 
-    my $msg = Playwright::Util::request ('POST', 'session', $self->{port}, $self->{ua}, type => delete $args{type}, args => [\%args] );
-    return $Playwright::mapper{$msg->{_type}}->($self,$msg) if (ref $msg eq 'HASH') && $msg->{_type} && exists $Playwright::mapper{$msg->{_type}};
+    my $msg = Playwright::Util::request(
+        'POST', 'session', $self->{port}, $self->{ua},
+        type => delete $args{type},
+        args => [ \%args ]
+    );
+    return $Playwright::mapper{ $msg->{_type} }->( $self, $msg )
+      if ( ref $msg eq 'HASH' )
+      && $msg->{_type}
+      && exists $Playwright::mapper{ $msg->{_type} };
     return $msg;
 }
 
@@ -263,12 +325,16 @@ Waits for an asynchronous operation returned by the waitFor* methods to complete
 
 =cut
 
-sub await ($self, $promise) {
+sub await ( $self, $promise ) {
     confess("Input must be an AsyncData") unless $promise->isa('AsyncData');
     my $obj = $promise->result(1);
     return $obj unless $obj->{_type};
     my $class = "Playwright::$obj->{_type}";
-    return $class->new( type => $obj->{_type}, id => $obj->{_guid}, handle => $self );
+    return $class->new(
+        type   => $obj->{_type},
+        id     => $obj->{_guid},
+        handle => $self
+    );
 }
 
 =head2 quit, DESTROY
@@ -280,30 +346,32 @@ Automatically called when the Playwright object goes out of scope.
 =cut
 
 sub quit ($self) {
-    #Prevent destructor from firing in child processes so we can do things like async()
+
+#Prevent destructor from firing in child processes so we can do things like async()
     return unless $$ == $self->{parent};
 
-    Playwright::Util::request ('GET', 'shutdown', $self->{port}, $self->{ua} );
-    return waitpid($self->{pid},0);
+    Playwright::Util::request( 'GET', 'shutdown', $self->{port}, $self->{ua} );
+    return waitpid( $self->{pid}, 0 );
 }
 
 sub DESTROY ($self) {
     $self->quit();
 }
 
-sub _start_server($port, $debug) {
-    $debug   = $debug   ? '-d' : '';
+sub _start_server ( $port, $debug ) {
+    $debug = $debug ? '-d' : '';
 
     $ENV{DEBUG} = 'pw:api' if $debug;
     my $pid = fork // confess("Could not fork");
     if ($pid) {
         print "Waiting for port to come up..." if $debug;
-        Net::EmptyPort::wait_port($port,30) or confess("Server never came up after 30s!");
+        Net::EmptyPort::wait_port( $port, 30 )
+          or confess("Server never came up after 30s!");
         print "done\n" if $debug;
         return $pid;
     }
 
-    exec( $node_bin, $server_bin, "-p", $port, $debug);
+    exec( $node_bin, $server_bin, "-p", $port, $debug );
 }
 
 1;

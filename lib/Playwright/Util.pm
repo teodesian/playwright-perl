@@ -17,16 +17,16 @@ De-duplicates request logic in the Playwright Modules.
 
 =cut
 
-sub request ($method, $url, $port, $ua, %args) {
+sub request ( $method, $url, $port, $ua, %args ) {
     my $fullurl = "http://localhost:$port/$url";
 
-    my $request  = HTTP::Request->new( $method, $fullurl);
+    my $request = HTTP::Request->new( $method, $fullurl );
     $request->header( 'Content-type' => 'application/json' );
-    $request->content( JSON::MaybeXS::encode_json(\%args) );
+    $request->content( JSON::MaybeXS::encode_json( \%args ) );
     my $response = $ua->request($request);
-    my $content =  $response->decoded_content();
+    my $content  = $response->decoded_content();
     my $decoded  = JSON::MaybeXS::decode_json($content);
-    my $msg = $decoded->{message};
+    my $msg      = $decoded->{message};
 
     confess($msg) if $decoded->{error};
 
