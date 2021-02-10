@@ -1,4 +1,8 @@
 Revision history for Playwright
 
+0.002 2021-02-10 TEODESIAN
+    [BUG FIXES]
+    - Declare perl 5.28 to be minimum version
+
 0.001 2020-11-02 TEODESIAN
     - First release to CPAN
