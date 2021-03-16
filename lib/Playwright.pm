@@ -22,9 +22,11 @@ use Playwright::Base();
 use Playwright::Util();
 
 #ABSTRACT: Perl client for Playwright
+use 5.006;
+use v5.28.0;    # Before 5.006, v5.10.0 would not be understood.
 
 no warnings 'experimental';
-use feature qw{signatures state};
+use feature qw{signatures};
 
 =head1 SYNOPSIS
 
@@ -302,7 +304,7 @@ sub _check_and_build_spec ($self) {
     $spec = Playwright::Util::request(
         'GET', 'spec', $self->{port}, $self->{ua},
     );
-
+    confess("Could not retrieve Playwright specification.  Check that your playwright installation is correct and complete.") unless ref $spec eq 'HASH';
     return $spec;
 }
 
