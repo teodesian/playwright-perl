@@ -3,6 +3,8 @@ package Playwright;
 use strict;
 use warnings;
 
+use v5.28;
+
 use sigtrap qw/die normal-signals/;
 
 use File::pushd;

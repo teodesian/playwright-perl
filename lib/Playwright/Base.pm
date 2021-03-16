@@ -3,6 +3,8 @@ package Playwright::Base;
 use strict;
 use warnings;
 
+use v5.28;
+
 use Sub::Install();
 
 use Async;

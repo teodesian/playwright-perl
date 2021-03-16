@@ -3,6 +3,8 @@ package Playwright::Util;
 use strict;
 use warnings;
 
+use v5.28;
+
 use JSON::MaybeXS();
 use Carp qw{confess};
 
