@@ -3,6 +3,7 @@ use Test2::Tools::Explain;
 use JSON::MaybeXS;
 use Test::MockModule qw{strict};
 use Test::MockFile;
+use Test::Fatal qw{exception};
 use Async;
 
 my ($qxret,$qxcode) = ('',255);
@@ -25,7 +26,7 @@ subtest "_check_and_build_spec" => sub {
     $utilmock->redefine('request', sub { 'eee' });
 
     undef $Playwright::spec;
-    is(Playwright::_check_and_build_spec({ ua => 'eeep', port => 666}),'eee',"Fetch works when spec undef");
+    like(exception { Playwright::_check_and_build_spec({ ua => 'eeep', port => 666} ) },qr/Could not retrieve/,"Fetch explodes when playwright_server doesn't have spec");
 };
 
 subtest "_build_classes" => sub {
