@@ -1,5 +1,9 @@
 Revision history for Playwright
 
+0.003 2021-03-16 TEODESIAN
+    [BUG FIXES]
+    - Fix broken testsuite
+
 0.002 2021-02-10 TEODESIAN
     [BUG FIXES]
     - Declare perl 5.28 to be minimum version
