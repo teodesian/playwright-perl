@@ -3,7 +3,8 @@ package Playwright;
 use strict;
 use warnings;
 
-use v5.28;
+use 5.006;
+use v5.28.0;    # Before 5.006, v5.10.0 would not be understood.
 
 use sigtrap qw/die normal-signals/;
 
