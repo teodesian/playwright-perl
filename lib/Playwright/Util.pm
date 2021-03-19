@@ -35,4 +35,10 @@ sub request ( $method, $url, $port, $ua, %args ) {
     return $msg;
 }
 
+sub arr2hash ($array,$primary_key) {
+    my $inside_out = {};
+    @$inside_out{map { $_->{$primary_key} } @$array} = @$array;
+    return $inside_out;
+}
+
 1;

@@ -18,7 +18,7 @@ use Net::EmptyPort();
 use JSON::MaybeXS();
 use File::Slurper();
 use File::Which();
-use Capture::Tiny qw{capture_stderr};
+use Capture::Tiny qw{capture capture_stderr};
 use Carp qw{confess};
 
 use Playwright::Base();
@@ -136,7 +136,6 @@ sub _check_node {
     confess("Can't locate Playwright server in '$server_bin'!")
       unless -f $server_bin;
 
-    #TODO make this portable with File::Which etc
     # Check that node and npm are installed
     $node_bin = File::Which::which('node');
     confess("node must exist and be executable") unless -x $node_bin;
@@ -149,7 +148,7 @@ sub _check_node {
     {
         #XXX the node Depsolver is deranged, global modules DO NOT WORK
         my $curdir = pushd(File::Basename::dirname($server_bin));
-        capture_stderr { $dep_raw = qx{$npm_bin list --json} };
+        ($dep_raw) = capture { system($npm_bin, qw{list --json}) };
         confess("Could not list available node modules!") unless $dep_raw;
 
         chomp $dep_raw;
@@ -307,6 +306,7 @@ sub _check_and_build_spec ($self) {
     $spec = Playwright::Util::request(
         'GET', 'spec', $self->{port}, $self->{ua},
     );
+
     confess("Could not retrieve Playwright specification.  Check that your playwright installation is correct and complete.") unless ref $spec eq 'HASH';
     return $spec;
 }

@@ -26,6 +26,13 @@ Everything newer than 5.28 is supported.
 Things should work on 5.20 or newer, but...
 Tests might fail due to Temp file weirdness with Test::MockFile.
 
+## Supported OS
+
+Everything seems to work fine on OSX and Linux.
+
+On Windows, you will have to approve a UAC prompt to exempt playwright_server from being firewalled off.
+
+
 ## How2develop
 
 Everything should more or less set itself up automatically, or explode and tell you what to do.

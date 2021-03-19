@@ -72,6 +72,7 @@ sub _coerce ( $spec, %args ) {
             $args{args}[$i] = $truthy ? JSON::true : JSON::false;
         }
         elsif ( $type->{name} eq 'Object' ) {
+            $type->{properties} = Playwright::Util::arr2hash($type->{properties},'name') if ref $type->{properties} eq 'ARRAY';
             foreach my $prop ( keys( %{ $type->{properties} } ) ) {
                 next unless exists $arg->{$prop};
                 my $truthy = int( !!$arg->{$prop} );
