@@ -1,5 +1,9 @@
 Revision history for Playwright
 
+0.004 2021-03-19 TEODESIAN
+    [BUG FIXES]
+    - Adjust spec parser for newer Playwright spec versions
+
 0.003 2021-03-16 TEODESIAN
     [BUG FIXES]
     - Fix broken testsuite
