@@ -51,6 +51,8 @@ print Dumper($result);
 $page->on('console',"return [...arguments]");
 
 my $promise = $page->waitForEvent('console');
+#XXX this *can* race
+sleep 1;
 $page->evaluate("console.log('hug')");
 my $console_log = $handle->await( $promise );
 

@@ -14,15 +14,47 @@ const path = require('path');
 let sharedir = require.resolve('playwright'); // api.json should be shipped with playwright itself
 var theFile = path.dirname(sharedir) + '/api.json';
 let rawdata = fs.readFileSync(theFile);
+
+// On newer versions of playwright, instead of using hash tables they just lazily output arrays, so we have to convert this
 let spec = JSON.parse(rawdata);
 
-// Establish argument order for callers
+function arr2hash (arr,primary_key) {
+    var inside_out = {};
+    for (var item of arr) {
+        inside_out[item.name] = item;
+    }
+    return inside_out;
+}
+
+var fix_it=false;
+if (spec instanceof Array) {
+    fix_it = true;
+    spec = arr2hash(spec,'name');
+}
+
+// Establish argument order for callers, and correct spec array-ification
 for (var classname of Object.keys(spec)) {
+    if (spec[classname].members instanceof Array) {
+        spec[classname].members = arr2hash(spec[classname].members,'name');
+    }
     for (var method of Object.keys(spec[classname].members)) {
         var order = 0;
+        if (spec[classname].members[method].args instanceof Array) {
+            spec[classname].members[method].args = arr2hash(spec[classname].members[method].args,'name');
+        }
         for (var arg of Object.keys(spec[classname].members[method].args) ) {
             spec[classname].members[method].args[arg].order = order++;
         }
+    }
+}
+
+//XXX spec is wrong here unfortunately
+if (fix_it) {
+    for (var className of ['Page','Frame']) {
+        spec[className].members.$$     = spec[className].members.querySelectorAll;
+        spec[className].members.$      = spec[className].members.querySelector;
+        spec[className].members.$$eval = spec[className].members.evalOnSelectorAll;
+        spec[className].members.$eval  = spec[className].members.evalOnSelector;
     }
 }
 
@@ -112,7 +144,6 @@ app.post('/command', async (req, res) => {
                     ...args
                 ];
             }
-
             const res = await subject[command](...args);
             result = { error : false, message : res };
 
@@ -150,7 +181,7 @@ app.post('/command', async (req, res) => {
             result = { error : true, message : e.message };
         }
     } else {
-        result = { error : true, message : "No such object, or " + command + " is not a globally recognized command for puppeteer" };
+        result = { error : true, message : "No such object, or " + command + " is not a globally recognized command for Playwright" };
     }
 
     res.json(result);
