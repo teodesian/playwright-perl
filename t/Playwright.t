@@ -7,7 +7,7 @@ use Test::Fatal qw{exception};
 use Async;
 
 my ($qxret,$qxcode) = ('',255);
-use Test::Mock::Cmd qx => sub { $? = $qxcode; return $qxret };
+use Test::Mock::Cmd qx => sub { $? = $qxcode; return $qxret }, system => sub { print $qxret };
 
 #De-Fang our BEGIN block so we can test safely
 no warnings qw{redefine once};
