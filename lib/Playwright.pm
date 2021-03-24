@@ -47,7 +47,7 @@ Checks and automatically installs a copy of the node dependencies in the local f
 
 Currently understands commands you can send to all the playwright classes defined in api.json (installed wherever your OS puts shared files for CPAN distributions).
 
-See L<https://playwright.dev/versions> and drill down into your relevant version (run `npm list playwright` ) 
+See L<https://playwright.dev/versions> and drill down into your relevant version (run `npm list playwright` )
 for what the classes do, and their usage.
 
 All the classes mentioned there will correspond to a subclass of the Playwright namespace.  For example:
