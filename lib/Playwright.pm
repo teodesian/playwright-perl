@@ -7,8 +7,6 @@ use warnings;
 use 5.006;
 use v5.28.0;    # Before 5.006, v5.10.0 would not be understood.
 
-use sigtrap qw/die normal-signals/;
-
 use File::pushd;
 use File::ShareDir();
 use File::Basename();
@@ -169,6 +167,7 @@ Creates a new browser and returns a handle to interact with it.
 =head3 INPUT
 
     debug (BOOL) : Print extra messages from the Playwright server process
+    timeout (INTEGER) : Seconds to wait for the playwright server to spin up and down.  Default: 30s
 
 =cut
 
@@ -327,13 +326,15 @@ sub new ( $class, %options ) {
 
     #XXX yes, this is a race, so we need retries in _start_server
     my $port = Net::EmptyPort::empty_port();
+    my $timeout = $options{timeout} // 30;
     my $self = bless(
         {
-            ua     => $options{ua} // LWP::UserAgent->new(),
-            port   => $port,
-            debug  => $options{debug},
-            pid    => _start_server( $port, $options{debug} ),
-            parent => $$,
+            ua      => $options{ua} // LWP::UserAgent->new(),
+            port    => $port,
+            debug   => $options{debug},
+            pid     => _start_server( $port, $timeout, $options{debug} ),
+            parent  => $$,
+            timeout => $timeout,
         },
         $class
     );
@@ -422,23 +423,41 @@ sub quit ($self) {
     return unless $$ == $self->{parent};
 
     $self->{killed} = 1;
+    print "Attempting to terminate server process...\n" if $self->{debug};
     Playwright::Util::request( 'GET', 'shutdown', $self->{port}, $self->{ua} );
 
-    return waitpid( $self->{pid}, 0 );
+    # 0 is always WCONTINUED, 1 is always WNOHANG, and POSIX is an expensive import
+    # When 0 is returned, the process is still active, so it needs more persuasion
+    foreach my $tick (0..3) {
+        return unless waitpid( $self->{pid}, 1) == 0;
+        sleep 1;
+    }
+
+    # Advanced persuasion
+    print "Forcibly terminating server process...\n" if $self->{debug};
+    kill('TERM', $self->{pid});
+
+    #XXX unfortunately I can't just do a SIGALRM, because blocking system calls can't be intercepted on win32
+    foreach my $tick (0..$self->{timeout}) {
+        return unless waitpid( $self->{pid}, 1 ) == 0;
+        sleep 1;
+    }
+    warn "Could not shut down playwright server!";
+    return;
 }
 
 sub DESTROY ($self) {
     $self->quit();
 }
 
-sub _start_server ( $port, $debug ) {
+sub _start_server ( $port, $timeout, $debug ) {
     $debug = $debug ? '-d' : '';
 
     $ENV{DEBUG} = 'pw:api' if $debug;
     my $pid = fork // confess("Could not fork");
     if ($pid) {
         print "Waiting for port to come up..." if $debug;
-        Net::EmptyPort::wait_port( $port, 30 )
+        Net::EmptyPort::wait_port( $port, $timeout )
           or confess("Server never came up after 30s!");
         print "done\n" if $debug;
         return $pid;

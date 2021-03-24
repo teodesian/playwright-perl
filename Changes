@@ -3,6 +3,8 @@ Revision history for Playwright
 0.005 2021-03-24 TEODESIAN
     [BUG FIXES]
     - Prevent double destroy in the event of quit() being called
+    - Make the destroy() process a good deal more reliable
+    - Add a timeout parameter to new() to control how long to wait for the server to spin up/down
     - Improve documentation
     - Adjust auto-install process to work better on windows, and not leak stderr in some contexts.
 
