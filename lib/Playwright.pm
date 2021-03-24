@@ -19,7 +19,7 @@ use Net::EmptyPort();
 use JSON::MaybeXS();
 use File::Slurper();
 use File::Which();
-use Capture::Tiny qw{capture capture_stderr};
+use Capture::Tiny qw{capture_merged capture_stderr};
 use Carp qw{confess};
 
 use Playwright::Base();
@@ -30,15 +30,24 @@ use feature qw{signatures};
 
 =head1 SYNOPSIS
 
-    use JSON::PP;
     use Playwright;
 
     my $handle = Playwright->new();
-    my $browser = $handle->launch( headless => JSON::PP::false, type => 'chrome' );
+    my $browser = $handle->launch( headless => 0, type => 'chrome' );
     my $page = $browser->newPage();
-    my $res = $page->goto('http://google.com', { waitUntil => 'networkidle' });
+    my $res = $page->goto('http://somewebsite.test', { waitUntil => 'networkidle' });
     my $frameset = $page->mainFrame();
     my $kidframes = $frameset->childFrames();
+
+    # Grab us some elements
+    my $body = $page->select('body');
+
+    # You can also get the innerText
+    my $text = $body->textContent();
+    $body->click();
+    $body->screenshot();
+
+    my $kids = $body->selectMulti('*');
 
 =head1 DESCRIPTION
 
@@ -167,9 +176,13 @@ our ( $spec, $server_bin, $node_bin, %mapper, %methods_to_rename );
 
 sub _check_node {
 
+    # Check that node is installed
+    $node_bin = File::Which::which('node');
+    confess("node must exist, be in your PATH and executable") unless -x $node_bin;
+
     my $global_install = '';
     my $path2here = File::Basename::dirname( Cwd::abs_path( $INC{'Playwright.pm'} ) );
-    my $decoder  = JSON::MaybeXS->new();
+
     # Make sure it's possible to start the server
     $server_bin = "$path2here/../bin/playwright_server";
     if (!-f $server_bin ) {
@@ -179,42 +192,30 @@ sub _check_node {
     confess("Can't locate Playwright server in '$server_bin'!")
       unless -f $server_bin;
 
-    # Check that node and npm are installed
-    $node_bin = File::Which::which('node');
-    confess("node must exist and be executable") unless -x $node_bin;
+    # Attempt to start the server.  If we can't do this, we almost certainly have dependency issues.
+    my ($output) = capture_merged { system($node_bin, $server_bin, '--check') };
+    return if $output =~ m/OK/;
 
     # Check for the necessary modules, this relies on package.json
     my $npm_bin = File::Which::which('npm');
     confess("npm must exist and be executable") unless -x $npm_bin;
-    my $dep_raw;
 
+    # pushd/popd closure
     {
-        #XXX the node Depsolver is deranged, global modules DO NOT WORK
         my $curdir = pushd(File::Basename::dirname($server_bin));
-        ($dep_raw) = capture { system($npm_bin, qw{list --json}) };
-        confess("Could not list available node modules!") unless $dep_raw;
 
-        chomp $dep_raw;
-        my $deptree = $decoder->decode($dep_raw);
+        # Attempt to install deps automatically.
+        confess("Production install of node dependencies must be done manually by nonroot users. Run the following:\n\n pushd '$curdir' && sudo npm i yargs express playwright uuid; popd\n\n") if $global_install;
 
-        my @needed = qw{express uuid yargs playwright};
-        my @has = keys( %{ $deptree->{dependencies} } );
-        my @deps = grep {my $subj=$_; grep { $_ eq $subj } @needed } @has;
-        my $need_deps = scalar(@deps) != scalar(@needed);
+        my $err  = capture_stderr { qx{npm i} };
+        # XXX apparently doing it 'once more with feeling' fixes issues on windows, lol
+        $err     = capture_stderr { qx{npm i} };
+        my $exit = $? >> 8;
 
-        #This is really just for developers
-        if ( $need_deps ) {
-            confess("Production install of node dependencies must be done manually by nonroot users. Run the following:\n\n pushd '$curdir' && sudo npm i yargs express playwright uuid; popd\n\n") if $global_install;
-
-            my $err  = capture_stderr { qx{npm i} };
-            my $exit = $? >> 8;
-
-            # Ignore failing for bogus reasons
-            if ( $err !~ m/package-lock/ ) {
-                confess("Error installing node dependencies:\n$err") if $exit;
-            }
+        # Ignore failing for bogus reasons
+        if ( $err !~ m/package-lock/ ) {
+            confess("Error installing node dependencies:\n$err") if $exit;
         }
-
     }
 }
 

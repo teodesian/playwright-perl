@@ -2,13 +2,27 @@
 
 "use strict";
 
+// If we don't have this, we're done for
+const { exit } = require('process');
+const fs = require('fs');
+const path = require('path');
+
+// Don't explode, but be helpful when we have unsatisfied deps
+try {
+    require('yargs');
+    require('uuid');
+    require('playwright');
+    require('express');
+} catch {
+    console.log("Required dependencies are not installed. Cannot continue, run `npm i` to fix.");
+    exit(1);
+}
+
+// Get what we actually want from our deps
 const yargs = require('yargs');
 const { v4 : uuidv4 } = require('uuid');
 const { chromium, firefox, webkit, devices } = require('playwright');
 const express = require('express');
-
-const fs = require('fs');
-const path = require('path');
 
 // Defines our interface
 let sharedir = require.resolve('playwright'); // api.json should be shipped with playwright itself
@@ -69,9 +83,19 @@ const argv = yargs
         description: 'Run on specified port',
         type: 'number',
     })
+    .option('check', {
+        alias: 'c',
+        description: 'Print whether our kit is good (or explode)',
+        type: 'boolean'
+    })
     .help()
     .alias('help', 'h')
     .argv;
+
+if (argv.check) {
+    console.log('OK');
+    exit(0);
+}
 
 const app = express();
 const port = argv.port || 6969;

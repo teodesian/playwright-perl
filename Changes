@@ -4,6 +4,7 @@ Revision history for Playwright
     [BUG FIXES]
     - Prevent double destroy in the event of quit() being called
     - Improve documentation
+    - Adjust auto-install process to work better on windows, and not leak stderr in some contexts.
 
 0.004 2021-03-19 TEODESIAN
     [BUG FIXES]
