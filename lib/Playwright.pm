@@ -428,7 +428,7 @@ sub quit ($self) {
 
     # 0 is always WCONTINUED, 1 is always WNOHANG, and POSIX is an expensive import
     # When 0 is returned, the process is still active, so it needs more persuasion
-    foreach my $tick (0..3) {
+    foreach (0..3) {
         return unless waitpid( $self->{pid}, 1) == 0;
         sleep 1;
     }
@@ -438,7 +438,7 @@ sub quit ($self) {
     kill('TERM', $self->{pid});
 
     #XXX unfortunately I can't just do a SIGALRM, because blocking system calls can't be intercepted on win32
-    foreach my $tick (0..$self->{timeout}) {
+    foreach (0..$self->{timeout}) {
         return unless waitpid( $self->{pid}, 1 ) == 0;
         sleep 1;
     }
