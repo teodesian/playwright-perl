@@ -1,5 +1,10 @@
 Revision history for Playwright
 
+0.005 2021-03-24 TEODESIAN
+    [BUG FIXES]
+    - Prevent double destroy in the event of quit() being called
+    - Improve documentation
+
 0.004 2021-03-19 TEODESIAN
     [BUG FIXES]
     - Adjust spec parser for newer Playwright spec versions
