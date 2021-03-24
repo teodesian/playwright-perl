@@ -3,6 +3,7 @@ package Playwright;
 use strict;
 use warnings;
 
+#ABSTRACT: Perl client for Playwright
 use 5.006;
 use v5.28.0;    # Before 5.006, v5.10.0 would not be understood.
 
@@ -23,10 +24,6 @@ use Carp qw{confess};
 
 use Playwright::Base();
 use Playwright::Util();
-
-#ABSTRACT: Perl client for Playwright
-use 5.006;
-use v5.28.0;    # Before 5.006, v5.10.0 would not be understood.
 
 no warnings 'experimental';
 use feature qw{signatures};
@@ -50,10 +47,40 @@ Checks and automatically installs a copy of the node dependencies in the local f
 
 Currently understands commands you can send to all the playwright classes defined in api.json (installed wherever your OS puts shared files for CPAN distributions).
 
-See L<https://playwright.dev/#version=master&path=docs%2Fapi.md&q=>
+See L<https://playwright.dev/versions> and drill down into your relevant version (run `npm list playwright` ) 
 for what the classes do, and their usage.
 
-There are two major exceptions in how things work versus the documentation.
+All the classes mentioned there will correspond to a subclass of the Playwright namespace.  For example:
+
+    # ISA Playwright
+    my $playwright = Playwright->new();
+    # ISA Playwright::BrowserContext
+    my $ctx = $playwright->newContext(...);
+    # ISA Playwright::Page
+    my $page = $ctx->newPage(...);
+    # ISA Playwright::ElementHandle
+    my $element = $ctx->select('body');
+
+See example.pl for a more thoroughly fleshed-out display on how to use this module.
+
+=head3 Why this documentation does not list all available subclasses and their methods
+
+The documentation and names for the subclasses of Playwright follow the spec strictly:
+
+Playwright::BrowserContext => L<https://playwright.dev/docs/api/class-browsercontext>
+Playwright::Page           => L<https://playwright.dev/docs/api/class-page>
+Playwright::ElementHandle  => L<https://playwright.dev/docs/api/class-elementhandle>
+
+...And so on.  100% of the spec is accessible regardless of the Playwright version installed
+due to these classes & their methods being built dynamically at run time based on the specification
+which is shipped with Playwright itself.
+
+You can check what methods are installed for each subclass by doing the following:
+
+    use Data::Dumper;
+    print Dumper($instance->{spec});
+
+There are two major exceptions in how things work versus the upstream Playwright documentation, detailed below in the C<Selectors> section.
 
 =head2 Selectors
 
@@ -87,10 +114,24 @@ To maximize the usefulness of these, I have wrapped the string passed with the f
 
 As such you can effectively treat the script string as a function body.
 The same restriction on only being able to pass one arg remains from the upstream:
-L<https://playwright.dev/#version=master&path=docs%2Fapi.md&q=pageevaluatepagefunction-arg>
+L<https://playwright.dev/docs/api/class-page#pageevalselector-pagefunction-arg>
 
 You will have to refer to the arguments array as described here:
 L<https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/arguments>
+
+=head3 example of evaluate()
+
+    # Read the console
+    $page->on('console',"return [...arguments]");
+
+    my $promise = $page->waitForEvent('console');
+    #TODO This request can race, the server framework I use to host the playwright spec is *not* FIFO (YET)
+    sleep 1;
+    $page->evaluate("console.log('hug')");
+    my $console_log = $handle->await( $promise );
+
+    print "Logged to console: '".$console_log->text()."'\n";
+
 
 =head2 Asynchronous operations
 
@@ -107,6 +148,8 @@ You will then need to wait on the result of the backgrounded action with the awa
 
 If you install this module from CPAN, you will likely encounter a croak() telling you to install node module dependencies.
 Follow the instructions and things should be just fine.
+
+If you aren't, please file a bug!
 
 =head1 CONSTRUCTOR
 
@@ -316,7 +359,7 @@ sub _check_and_build_spec ($self) {
 =head2 launch(HASH) = Playwright::Browser
 
 The Argument hash here is essentially those you'd see from browserType.launch().  See:
-L<https://playwright.dev/#version=v1.5.1&path=docs%2Fapi.md&q=browsertypelaunchoptions>
+L<https://playwright.dev/docs/api/class-browsertype#browsertypelaunchoptions>
 
 There is an additional "special" argument, that of 'type', which is used to specify what type of browser to use, e.g. 'firefox'.
 
@@ -370,11 +413,16 @@ Automatically called when the Playwright object goes out of scope.
 =cut
 
 sub quit ($self) {
+    # Prevent double destroy after quit()
+    return if $self->{killed};
 
-#Prevent destructor from firing in child processes so we can do things like async()
+    # Prevent destructor from firing in child processes so we can do things like async()
+    # This should also prevent the waitpid below from deadlocking due to two processes waiting on the same pid.
     return unless $$ == $self->{parent};
 
+    $self->{killed} = 1;
     Playwright::Util::request( 'GET', 'shutdown', $self->{port}, $self->{ua} );
+
     return waitpid( $self->{pid}, 0 );
 }
 
