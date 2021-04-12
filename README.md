@@ -49,3 +49,8 @@ dzil listdeps --missing | sudo cpanm
 Actually running stuff:
 
 `perl -Ilib example.pl`
+
+## Questions?
+Hop into the playwright slack, and check out the #playwright-perl channel therein.
+I'm watching that space and should be able to answer your questions.
+https://aka.ms/playwright-slack

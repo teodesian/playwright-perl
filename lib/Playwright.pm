@@ -70,6 +70,11 @@ All the classes mentioned there will correspond to a subclass of the Playwright 
 
 See example.pl for a more thoroughly fleshed-out display on how to use this module.
 
+=head3 Questions?
+
+Feel free to join the Playwright slack server, as there is a dedicated #playwright-perl channel which I, the module author, await your requests in.
+L<https://aka.ms/playwright-slack>
+
 =head3 Why this documentation does not list all available subclasses and their methods
 
 The documentation and names for the subclasses of Playwright follow the spec strictly:
@@ -421,6 +426,9 @@ sub quit ($self) {
     # Prevent destructor from firing in child processes so we can do things like async()
     # This should also prevent the waitpid below from deadlocking due to two processes waiting on the same pid.
     return unless $$ == $self->{parent};
+
+    # Make sure we don't mash the exit code of things like prove
+    local $?;
 
     $self->{killed} = 1;
     print "Attempting to terminate server process...\n" if $self->{debug};

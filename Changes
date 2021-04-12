@@ -1,5 +1,9 @@
 Revision history for Playwright
 
+0.006 2021-04-12 TEODESIAN
+    - Prevent $? from bubbling up in our destructor and invalidating program exit code by localizing $? in quit()
+    - Add a link to the Playwright slack in the documentation.
+
 0.005 2021-03-24 TEODESIAN
     [BUG FIXES]
     - Prevent double destroy in the event of quit() being called
