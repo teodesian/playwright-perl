@@ -147,7 +147,7 @@ L<https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/ar
 
 =head2 Asynchronous operations
 
-The waitFor* methods defined on various classes will return an instance of L<AsyncData>, a part of the L<Async> module.
+The waitFor* methods defined on various classes will return an instance of AsyncData, a part of the L<Async> module.
 You will then need to wait on the result of the backgrounded action with the await() method documented below.
 
     # Assuming $handle is a Playwright object
