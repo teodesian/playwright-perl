@@ -464,7 +464,7 @@ sub _start_server ( $port, $timeout, $debug ) {
     $ENV{DEBUG} = 'pw:api' if $debug;
     my $pid = fork // confess("Could not fork");
     if ($pid) {
-        print "Waiting for port to come up..." if $debug;
+        print "Waiting for port to come up...\n" if $debug;
         Net::EmptyPort::wait_port( $port, $timeout )
           or confess("Server never came up after 30s!");
         print "done\n" if $debug;
