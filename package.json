@@ -7,7 +7,7 @@
   "dependencies": {
     "express": "^4.17",
     "playwright": "^1.5",
-    "yargs": "^16.1",
-    "uuid": "^8.3"
+    "uuid": "^8.3",
+    "yargs": "^16.1"
   }
 }
