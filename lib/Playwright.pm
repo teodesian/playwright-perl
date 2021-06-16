@@ -182,7 +182,7 @@ sub _check_node {
 
     # Check that node is installed
     $node_bin = File::Which::which('node');
-    confess("node must exist, be in your PATH and executable") unless -x $node_bin;
+    confess("node must exist, be in your PATH and executable") unless $node_bin && -x $node_bin;
 
     my $global_install = '';
     my $path2here = File::Basename::dirname( Cwd::abs_path( $INC{'Playwright.pm'} ) );
