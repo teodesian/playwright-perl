@@ -90,7 +90,7 @@ use Cwd qw{abs_path};
 my $pg = abs_path("$FindBin::Bin/at/test.html");
 
 # Handle dialogs on page start, and dialog after dialog
-# NOTE -- the 'load' event won't fire until the dialog is dismissed in some browsers 
+# NOTE -- the 'load' event won't fire until the dialog is dismissed in some browsers
 $promise = $page->waitForEvent('dialog');
 $page->goto("file://$pg", { waitUntil => 'networkidle' });
 
@@ -107,6 +107,7 @@ $promise = $page->waitForEvent('download');
 $page->select('#d-lo')->click();
 
 my $download = $handle->await( $promise );
+
 $download->saveAs('test2.jpg');
 
 # Fiddle with file inputs

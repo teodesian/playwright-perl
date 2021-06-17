@@ -1,5 +1,9 @@
 Revision history for Playwright
 
+0.007 2021-06-17 TEODESIAN
+    - Adjust module for changing Download returns, and api.json no longer being shipped with Playwright
+    - Fix some warnings when installing for the first time.
+
 0.006 2021-04-12 TEODESIAN
     - Prevent $? from bubbling up in our destructor and invalidating program exit code by localizing $? in quit()
     - Add a link to the Playwright slack in the documentation.

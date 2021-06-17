@@ -11,3 +11,5 @@ package-lock.json
 node_modules/*
 example.pl
 tidyall.ini
+generate_api_json.sh
+api.json

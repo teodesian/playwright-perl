@@ -30,7 +30,7 @@ Tests might fail due to Temp file weirdness with Test::MockFile.
 
 Everything seems to work fine on OSX and Linux.
 
-On Windows, you will have to approve a UAC prompt to exempt playwright_server from being firewalled off.
+On Windows, you will have to approve a UAC prompt to exempt `playwright_server` from being firewalled off.
 
 
 ## How2develop
@@ -49,6 +49,14 @@ dzil listdeps --missing | sudo cpanm
 Actually running stuff:
 
 `perl -Ilib example.pl`
+
+## Dealing with api.json
+
+Playwright doesn't ship their api.json with the distribution on NPM.
+You have to generate it from their repo.
+
+clone it in a directory that is the same as the one containing this repository.
+then run `generate_api_json.sh` to get things working such that the build scripts know what to do.
 
 ## Questions?
 Hop into the playwright slack, and check out the #playwright-perl channel therein.

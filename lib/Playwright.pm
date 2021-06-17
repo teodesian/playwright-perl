@@ -402,6 +402,7 @@ Waits for an asynchronous operation returned by the waitFor* methods to complete
 sub await ( $self, $promise ) {
     confess("Input must be an AsyncData") unless $promise->isa('AsyncData');
     my $obj = $promise->result(1);
+
     return $obj unless $obj->{_type};
     my $class = "Playwright::$obj->{_type}";
     return $class->new(
