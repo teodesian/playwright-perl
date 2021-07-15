@@ -119,6 +119,11 @@ app.post('/session', async (req, res) => {
     var type    = payload.type;
     var args    = payload.args || [];
 
+    if (argv.debug) {
+        console.log("Got launch arguments:");
+        console.log(args);
+    }
+
     var result;
     if ( type && browsers[type] ) {
         try {
