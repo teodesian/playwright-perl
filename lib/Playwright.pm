@@ -156,6 +156,15 @@ You will then need to wait on the result of the backgrounded action with the awa
     my $result = $handle->await( $async );
     my $logged = $result->text();
 
+=head2 Getting Object parents
+
+Some things, like elements naturally are children of the pages in which they are found.
+Sometimes this can get confusing when you are using multiple pages, especially if you let the ref to the page go out of scope.
+Don't worry though, you can access the parent attribute on most Playwright::* objects:
+
+    # Assuming $element is a Playwright::ElementHandle
+    my $page = $element->{parent};
+
 =head1 INSTALLATION NOTE
 
 If you install this module from CPAN, you will likely encounter a croak() telling you to install node module dependencies.

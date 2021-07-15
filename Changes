@@ -1,5 +1,8 @@
 Revision history for Playwright
 
+0.008 2021-07-19 TEODESIAN
+    - Add parent attribute to grab element parents when needed
+
 0.007 2021-06-17 TEODESIAN
     - Adjust module for changing Download returns, and api.json no longer being shipped with Playwright
     - Fix some warnings when installing for the first time.
