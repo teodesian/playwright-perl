@@ -165,6 +165,15 @@ Don't worry though, you can access the parent attribute on most Playwright::* ob
     # Assuming $element is a Playwright::ElementHandle
     my $page = $element->{parent};
 
+
+=head2 Firefox Specific concerns
+
+By default, firefox will open PDFs in a pdf.js window.
+To suppress this behavior (such as in the event you are await()ing a download event), you will have to pass this option to launch():
+
+    # Assuming $handle is a Playwright object
+    my $browser = $handle->launch( type => 'firefox', firefoxUserPrefs => { 'pdfjs.disabled' => JSON::true } );
+
 =head1 INSTALLATION NOTE
 
 If you install this module from CPAN, you will likely encounter a croak() telling you to install node module dependencies.
