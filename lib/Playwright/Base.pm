@@ -35,9 +35,10 @@ Creates a new page and returns a handle to interact with it.
 
 =head3 INPUT
 
-    handle (Playwright) : Playwright object.
-    id (STRING)         : _guid returned by a response from the Playwright server with the provided type.
-    type (STRING)       : Type to actually use
+    handle (Playwright)    : Playwright object.
+    id (STRING)            : _guid returned by a response from the Playwright server with the provided type.
+    type (STRING)          : Type to actually use
+    parent (Playwright::*) : Parent Object (such as a page)
 
 =cut
 
@@ -45,11 +46,12 @@ sub new ( $class, %options ) {
 
     my $self = bless(
         {
-            spec => $Playwright::spec->{ $options{type} }{members},
-            type => $options{type},
-            guid => $options{id},
-            ua   => $options{handle}{ua},
-            port => $options{handle}{port},
+            spec   => $Playwright::spec->{ $options{type} }{members},
+            type   => $options{type},
+            guid   => $options{id},
+            ua     => $options{handle}{ua},
+            port   => $options{handle}{port},
+            parent => $options{parent},
         },
         $class
     );

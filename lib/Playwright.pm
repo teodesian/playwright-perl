@@ -255,7 +255,8 @@ sub _build_classes {
             return $class->new(
                 handle => $self,
                 id     => $res->{_guid},
-                type   => $class
+                type   => $class,
+                parent => $self,
             );
         };
 

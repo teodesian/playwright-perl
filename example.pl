@@ -75,6 +75,9 @@ foreach my $input (@$inputs) {
 my $actual_input = $page->select('input[name=q]');
 $actual_input->fill('whee');
 
+# Ensure we can grab the parent (convenience)
+print "Got Parent: ISA ".ref($actual_input->{parent})."\n";
+
 # Take screen of said element
 $actual_input->screenshot({ path => 'test.jpg' });
 
