@@ -4,7 +4,6 @@ use JSON::MaybeXS;
 use Test::MockModule qw{strict};
 use Test::MockFile;
 use Test::Fatal qw{exception};
-use Async;
 
 my ($qxret,$qxcode) = ('',255);
 use Test::Mock::Cmd qx => sub { $? = $qxcode; return $qxret }, system => sub { print $qxret };
@@ -158,18 +157,17 @@ subtest "await" => sub {
 
     my $res = {};
 
-    no warnings qw{redefine once};
-    local *AsyncData::result = sub { $res };
-    use warnings;
+    my $utilmock = Test::MockModule->new('Playwright::Util');
+    $utilmock->redefine('await', sub { $res } );
 
-    my $promise = bless({},'AsyncData');
+    my $promise = { file => 'foo.out', pid => 666 };
 
     my $obj = bless({ ua => 'eee', 'port' => 1 }, 'Playwright');
     no warnings qw{redefine once};
     local *Playwright::Bogus::new = sub { my ($class, %input) = @_; return bless({ spec => 'whee', ua => $input{handle}{ua}, port => $input{handle}{port}, type => $input{type}, guid => $input{id} }, 'Playwright::Bogus') };
     use warnings;
 
-    is($obj->await($promise),{},"await passthru works");
+    is($obj->await($promise), {},"await passthru works");
 
     $res = { _guid => 'abc123', _type => 'Bogus' };
     my $expected = bless({ spec => 'whee', ua => 'eee', port => 1, guid => 'abc123', type => 'Bogus' }, 'Bogus');

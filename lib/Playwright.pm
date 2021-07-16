@@ -15,7 +15,6 @@ use LWP::UserAgent();
 use Sub::Install();
 use Net::EmptyPort();
 use JSON::MaybeXS();
-use File::Slurper();
 use File::Which();
 use Capture::Tiny qw{capture_merged capture_stderr};
 use Carp qw{confess};
@@ -147,8 +146,8 @@ L<https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/ar
 
 =head2 Asynchronous operations
 
-The waitFor* methods defined on various classes will return an instance of AsyncData, a part of the L<Async> module.
-You will then need to wait on the result of the backgrounded action with the await() method documented below.
+The waitFor* methods defined on various classes are essentially a light wrapper around Mojo::IOLoop::Subprocess.
+You will need to wait on the result of the backgrounded action with the await() method documented below.
 
     # Assuming $handle is a Playwright object
     my $async = $page->waitForEvent('console');
@@ -412,15 +411,14 @@ sub launch ( $self, %args ) {
     return $msg;
 }
 
-=head2 await (AsyncData) = Object
+=head2 await (HASH) = Object
 
 Waits for an asynchronous operation returned by the waitFor* methods to complete and returns the value.
 
 =cut
 
 sub await ( $self, $promise ) {
-    confess("Input must be an AsyncData") unless $promise->isa('AsyncData');
-    my $obj = $promise->result(1);
+    my $obj = Playwright::Util::await($promise);
 
     return $obj unless $obj->{_type};
     my $class = "Playwright::$obj->{_type}";

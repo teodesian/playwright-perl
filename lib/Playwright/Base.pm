@@ -91,7 +91,7 @@ sub _request ( $self, %args ) {
 
     %args = Playwright::Base::_coerce( $self->{spec}, %args );
 
-    return AsyncData->new( sub { &Playwright::Base::_do( $self, %args ) } )
+    return Playwright::Util::async( sub { &Playwright::Base::_do( $self, %args ) } )
       if $args{command} =~ m/^waitFor/;
 
     my $msg = Playwright::Base::_do->( $self, %args );

@@ -7,6 +7,9 @@ use v5.28;
 
 use JSON::MaybeXS();
 use Carp qw{confess};
+use Sereal::Encoder;
+use Sereal::Decoder;
+use File::Temp;
 
 #ABSTRACT: Common utility functions for the Playwright module
 
@@ -39,6 +42,25 @@ sub arr2hash ($array,$primary_key) {
     my $inside_out = {};
     @$inside_out{map { $_->{$primary_key} } @$array} = @$array;
     return $inside_out;
+}
+
+# Serialize a subprocess because NOTHING ON CPAN DOES THIS GRRRRR
+sub async ($subroutine) {
+    # The fork would result in the tmpdir getting whacked when it terminates.
+    my (undef, $filename) = File::Temp::tempfile();
+    my $pid = fork() // die "Could not fork";
+    _child($filename, $subroutine) unless $pid;
+    return { pid => $pid, file => $filename };
+}
+
+sub _child ($filename,$subroutine) {
+    Sereal::Encoder->encode_to_file($filename,$subroutine->());
+    exit 0;
+}
+
+sub await ($to_wait) {
+    waitpid($to_wait->{pid},0);
+    return Sereal::Decoder->decode_from_file($to_wait->{file});
 }
 
 1;

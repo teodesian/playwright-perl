@@ -21,4 +21,6 @@ $json = '{ "error":false, "message": { "_type":"Bogus", "_guid":"abc123" } }';
 
 is(Playwright::Util::request('tickle','chase',666, LWP::UserAgent->new(), a => 'b' ), { _type => 'Bogus', _guid => 'abc123' }, "Good response from server decoded and returned");
 
+#Not testing async/await, mocking forks is bogus
+
 done_testing();
