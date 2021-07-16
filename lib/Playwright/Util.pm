@@ -10,6 +10,7 @@ use Carp qw{confess};
 use Sereal::Encoder;
 use Sereal::Decoder;
 use File::Temp;
+use POSIX();
 
 #ABSTRACT: Common utility functions for the Playwright module
 
@@ -55,7 +56,8 @@ sub async ($subroutine) {
 
 sub _child ($filename,$subroutine) {
     Sereal::Encoder->encode_to_file($filename,$subroutine->());
-    exit 0;
+    # Prevent destructors from firing due to exiting instantly
+    POSIX::_exit(0);
 }
 
 sub await ($to_wait) {
