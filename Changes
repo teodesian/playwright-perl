@@ -1,6 +1,6 @@
 Revision history for Playwright
 
-0.008 2021-07-19 TEODESIAN
+0.008 2021-07-16 TEODESIAN
     - Add parent attribute to grab element parents when needed
     - Remove dependency on AsyncData in favor of File::Temp, Sereal and fork().
     - Prevent destructors for other objects firing in forks used to do asynchronous operations.
