@@ -1,5 +1,8 @@
 Revision history for Playwright
 
+0.009 2021-07-26 TEODESIAN
+    - Remove dependency on yargs in bin/playwright_server
+
 0.008 2021-07-16 TEODESIAN
     - Add parent attribute to grab element parents when needed
     - Remove dependency on AsyncData in favor of File::Temp, Sereal and fork().
