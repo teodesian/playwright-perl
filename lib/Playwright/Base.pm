@@ -7,7 +7,6 @@ use v5.28;
 
 use Sub::Install();
 
-use Async;
 use JSON;
 use Playwright::Util();
 
