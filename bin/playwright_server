@@ -9,7 +9,6 @@ const path = require('path');
 
 // Don't explode, but be helpful when we have unsatisfied deps
 try {
-    require('yargs');
     require('uuid');
     require('playwright');
     require('express');
@@ -19,7 +18,6 @@ try {
 }
 
 // Get what we actually want from our deps
-const yargs = require('yargs');
 const { v4 : uuidv4 } = require('uuid');
 const { chromium, firefox, webkit, devices } = require('playwright');
 const express = require('express');
@@ -74,33 +72,34 @@ if (fix_it) {
     }
 }
 
-const argv = yargs
-    .option('debug', {
-        alias: 'd',
-        description: 'Print additional debugging messages',
-        type: 'boolean',
-    })
-    .option('port', {
-        alias: 'p',
-        description: 'Run on specified port',
-        type: 'number',
-    })
-    .option('check', {
-        alias: 'c',
-        description: 'Print whether our kit is good (or explode)',
-        type: 'boolean'
-    })
-    .help()
-    .alias('help', 'h')
-    .argv;
+// Parse arguments
+var args = process.argv.slice(2);
 
-if (argv.check) {
+if ( args.filter(arg => arg == '--help' || arg == '-h' || arg == '-?' ).length > 0 ) {
+    console.log("Usage:\nplaywright_server [--debug | --check | --port PORT | --help]");
+    exit(0);
+}
+
+if ( args.filter(arg => arg == '--check').length > 0 ) {
     console.log('OK');
     exit(0);
 }
 
+var debug = false;
+if ( args.filter(arg => arg == '--debug').length > 0 ) {
+    debug = true;
+}
+
+var got_port = 6969;
+if ( args.filter(arg => arg == '--port').length > 0 ) {
+    var pos = args.indexOf('--port') + 1;
+    if (pos != 0) {
+        got_port = args[pos];
+    }
+}
+
 const app = express();
-const port = argv.port || 6969;
+const port = got_port;
 
 var objects = {};
 var browsers = { 'firefox' : firefox, 'chrome' : chromium, 'webkit' : webkit };
@@ -119,7 +118,7 @@ app.post('/session', async (req, res) => {
     var type    = payload.type;
     var args    = payload.args || [];
 
-    if (argv.debug) {
+    if (debug) {
         console.log("Got launch arguments:");
         console.log(args);
     }
@@ -148,7 +147,7 @@ app.post('/command', async (req, res) => {
     var args    = payload.args || [];
     var result = {};
 
-    if (argv.debug) {
+    if (debug) {
         console.log(type,object,command,args);
     }
 
@@ -231,7 +230,7 @@ app.get('/shutdown', async (req, res) => {
 //Modulino
 if (require.main === module) {
     app.listen( port, () => {
-        if (argv.debug) {
+        if (debug) {
             console.log(`Listening on port ${port}`);
         }
     });
