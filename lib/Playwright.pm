@@ -69,6 +69,14 @@ All the classes mentioned there will correspond to a subclass of the Playwright 
 
 See example.pl for a more thoroughly fleshed-out display on how to use this module.
 
+=head3 Getting Started
+
+When using the playwright module for the first time, you may be told to install dependencies.
+It should provide you with instructions which will get you working right away.
+
+However, depending on your node installation this may not work due to dependencies for node.js not being in the expected location.
+To fix this, you will need to update your NODE_PATH environment variable to point to the correct location.
+
 =head3 Questions?
 
 Feel free to join the Playwright slack server, as there is a dedicated #playwright-perl channel which I, the module author, await your requests in.
@@ -226,7 +234,7 @@ sub _check_node {
         my $curdir = pushd(File::Basename::dirname($server_bin));
 
         # Attempt to install deps automatically.
-        confess("Production install of node dependencies must be done manually by nonroot users. Run the following:\n\n pushd '$curdir' && sudo npm i yargs express playwright uuid; popd\n\n") if $global_install;
+        confess("Production install of node dependencies must be done manually by nonroot users. Run the following:\n\n pushd '$curdir' && sudo npm i yargs express playwright uuid; popd\n\nIf this doesn't resolve the issue, export NODE_PATH='$curdir/node_modules'.") if $global_install;
 
         my $err  = capture_stderr { qx{npm i} };
         # XXX apparently doing it 'once more with feeling' fixes issues on windows, lol

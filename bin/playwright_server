@@ -9,9 +9,17 @@ const path = require('path');
 
 // Don't explode, but be helpful when we have unsatisfied deps
 try {
-    require('uuid');
-    require('playwright');
-    require('express');
+    if (process.env.NODE_PATH) {
+        // Let users override in the event they have to
+        require(process.env.NODE_PATH + '/uuid');
+        require(process.env.NODE_PATH + '/playwright');
+        require(process.env.NODE_PATH + '/express');
+    } else {
+        // Assume their kit is good
+        require('uuid');
+        require('playwright');
+        require('express');
+    }
 } catch {
     console.log("Required dependencies are not installed. Cannot continue, run `npm i` to fix.");
     exit(1);
