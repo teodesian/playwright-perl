@@ -7,7 +7,6 @@ use warnings;
 use 5.006;
 use v5.28.0;    # Before 5.006, v5.10.0 would not be understood.
 
-use File::pushd;
 use File::ShareDir();
 use File::Basename();
 use Cwd();
@@ -222,7 +221,7 @@ sub _check_node {
     my ($output) = capture_merged { system($node_bin, $server_bin, '--check') };
     return if $output =~ m/OK/;
 
-    warn $output;
+    warn $output if $output;
 
     confess( "playwright_server could not run successfully.
     See the above error message for why.
