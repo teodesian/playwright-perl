@@ -1,5 +1,8 @@
 Revision history for Playwright
 
+0.010 2021-07-27 TEODESIAN
+    - Fix issue with yargs fix breaking invocation in Playwright.pm
+
 0.009 2021-07-26 TEODESIAN
     - Remove dependency on yargs in bin/playwright_server
 
