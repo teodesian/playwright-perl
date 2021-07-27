@@ -489,7 +489,7 @@ sub _start_server ( $port, $timeout, $debug ) {
         return $pid;
     }
 
-    exec( $node_bin, $server_bin, "-p", $port, $debug );
+    exec( $node_bin, $server_bin, "--port", $port, $debug );
 }
 
 1;
