@@ -119,3 +119,8 @@ $page->select('#drphil')->click();
 my $chooseu = $handle->await( $choochoo );
 $chooseu->setFiles('test.jpg');
 
+# Make sure we can do child selectors
+my $parent = $page->select('body');
+my $child = $parent->select('#drphil');
+print ref($child)."\n";
+
