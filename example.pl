@@ -10,7 +10,7 @@ use Try::Tiny;
 my $handle = Playwright->new( debug => 1 );
 
 # Open a new chrome instance
-my $browser = $handle->launch( headless => 0, type => 'firefox' );
+my $browser = $handle->launch( headless => 1, type => 'firefox' );
 
 # Open a tab therein
 my $page = $browser->newPage({ videosPath => 'video', acceptDownloads => 1 });

@@ -48,7 +48,7 @@ dzil listdeps --missing | sudo cpanm
 
 Actually running stuff:
 
-`perl -Ilib example.pl`
+`PATH="$(cwd)/bin:$PATH" perl -Ilib example.pl`
 
 ## Dealing with api.json
 

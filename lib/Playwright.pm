@@ -71,7 +71,7 @@ See example.pl for a more thoroughly fleshed-out display on how to use this modu
 
 =head3 Getting Started
 
-When using the playwright module for the first time, you may be told to install dependencies.
+When using the playwright module for the first time, you may be told to install node.js libraries.
 It should provide you with instructions which will get you working right away.
 
 However, depending on your node installation this may not work due to dependencies for node.js not being in the expected location.
@@ -209,43 +209,39 @@ sub _check_node {
     $node_bin = File::Which::which('node');
     confess("node must exist, be in your PATH and executable") unless $node_bin && -x $node_bin;
 
-    my $global_install = '';
     my $path2here = File::Basename::dirname( Cwd::abs_path( $INC{'Playwright.pm'} ) );
 
     # Make sure it's possible to start the server
-    $server_bin = "$path2here/../bin/playwright_server";
-    if (!-f $server_bin ) {
-        $server_bin = File::Which::which('playwright_server');
-        $global_install = 1;
-    }
-    confess("Can't locate Playwright server in '$server_bin'!")
-      unless -f $server_bin;
+    $server_bin = File::Which::which('playwright_server');
+    confess("Can't locate playwright_server!
+    Please ensure it is installed in your PATH.
+    If you installed this module from CPAN, it should already be.")
+      unless $server_bin && -x $server_bin;
 
     # Attempt to start the server.  If we can't do this, we almost certainly have dependency issues.
     my ($output) = capture_merged { system($node_bin, $server_bin, '--check') };
     return if $output =~ m/OK/;
 
-    # Check for the necessary modules, this relies on package.json
-    my $npm_bin = File::Which::which('npm');
-    confess("npm must exist and be executable") unless -x $npm_bin;
+    warn $output;
 
-    # pushd/popd closure
-    {
-        my $curdir = pushd(File::Basename::dirname($server_bin));
+    confess( "playwright_server could not run successfully.
+    See the above error message for why.
+    It's likely to be unmet dependencies, or a NODE_PATH issue.
 
-        # Attempt to install deps automatically.
-        confess("Production install of node dependencies must be done manually by nonroot users. Run the following:\n\n pushd '$curdir' && sudo npm i yargs express playwright uuid; popd\n\nIf this doesn't resolve the issue, export NODE_PATH='$curdir/node_modules'.") if $global_install;
+    Install of node dependencies must be done manually.
+    Run the following:
 
-        my $err  = capture_stderr { qx{npm i} };
-        # XXX apparently doing it 'once more with feeling' fixes issues on windows, lol
-        $err     = capture_stderr { qx{npm i} };
-        my $exit = $? >> 8;
+    npm i express playwright uuid
+    sudo npx playwright install-deps
+    export NODE_PATH=\"\$(pwd)/node_modules\".
 
-        # Ignore failing for bogus reasons
-        if ( $err !~ m/package-lock/ ) {
-            confess("Error installing node dependencies:\n$err") if $exit;
-        }
-    }
+    If you still experience issues, run the following:
+
+    NODE_DEBUG=module playwright_server --check
+
+    This should tell you why node can't find the deps you have installed.
+    ");
+
 }
 
 sub _build_classes {
