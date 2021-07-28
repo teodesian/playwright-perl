@@ -62,6 +62,7 @@ sub _child ($filename,$subroutine) {
 
 sub await ($to_wait) {
     waitpid($to_wait->{pid},0);
+    confess("Timed out while waiting for event.") unless -f $to_wait->{file} && -s _;
     return Sereal::Decoder->decode_from_file($to_wait->{file});
 }
 
