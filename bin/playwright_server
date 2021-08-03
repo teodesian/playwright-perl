@@ -160,9 +160,13 @@ app.post('/command', async (req, res) => {
 
             //XXX We have to do a bit of 'special' handling for scripts
             // This has implications for the type of scripts you can use
+            // In addition, we translate anything with a guid (previously found elements)
             if (command == 'evaluate' || command == 'evaluateHandle') {
                 var toEval = args.shift();
                 const fun = new Function (toEval);
+                args = args.map( x =>
+                    x.uuid ? objects[x.uuid] : x
+                );
                 args = [
                     fun,
                     ...args

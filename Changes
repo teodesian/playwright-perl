@@ -1,5 +1,8 @@
 Revision history for Playwright
 
+0.012 2021-08-03 TEODESIAN
+    - Automatically translate element handles passed as args objects to the playwright process.
+
 0.011 2021-07-27 TEODESIAN
     - Make no attempts whatsoever to install node deps for users, instead giving them advice how to self-service fix their problems.
 

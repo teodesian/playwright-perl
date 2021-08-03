@@ -26,6 +26,17 @@ De-duplicates request logic in the Playwright Modules.
 sub request ( $method, $url, $port, $ua, %args ) {
     my $fullurl = "http://localhost:$port/$url";
 
+    # Handle passing Playwright elements as arguments
+    if (ref $args{args} eq 'ARRAY') {
+        @{$args{args}} = map {
+            my $transformed = $_;
+            if (ref($_) eq 'Playwright::ElementHandle' ) {
+                $transformed = { uuid => $_->{guid} }
+            }
+            $transformed;
+        } @{$args{args}};
+    }
+
     my $request = HTTP::Request->new( $method, $fullurl );
     $request->header( 'Content-type' => 'application/json' );
     $request->content( JSON::MaybeXS::encode_json( \%args ) );

@@ -137,6 +137,9 @@ L<https://playwright.dev/docs/api/class-page#pageevalselector-pagefunction-arg>
 You will have to refer to the arguments array as described here:
 L<https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/arguments>
 
+You can also pass Playwright::ElementHandle objects as returned by the select() and selectMulti() routines.
+They will be correctly translated into DOMNodes as you would get from the querySelector() javascript functions.
+
 =head3 example of evaluate()
 
     # Read the console
