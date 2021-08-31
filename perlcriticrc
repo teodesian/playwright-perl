@@ -1,1 +1,1 @@
-exclude = RequireUseStrict|RequireUseWarnings|ProhibitSubroutinePrototypes
+conf/perlcriticrc

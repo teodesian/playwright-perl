@@ -46,17 +46,21 @@ dzil authordeps --missing | sudo cpanm
 dzil listdeps --missing | sudo cpanm
 ```
 
-Actually running stuff:
+Running dzil test should let you know if your kit is good to develop.
+
+Actually running stuff will look like this after you generate the API json and modules:
 
 `PATH="$(pwd)/bin:$PATH" perl -Ilib example.pl`
 
-## Dealing with api.json
+## Dealing with api.json and generating modules
 
 Playwright doesn't ship their api.json with the distribution on NPM.
 You have to generate it from their repo.
 
 clone it in a directory that is the same as the one containing this repository.
 then run `generate_api_json.sh` to get things working such that the build scripts know what to do.
+
+Then run `generate_perl_modules.pl` to get the accessor classes built based off of the spec, and insert the spec JSON into the playwright_server binary.
 
 ## Questions?
 Hop into the playwright slack, and check out the #playwright-perl channel therein.

@@ -13,3 +13,6 @@ example.pl
 tidyall.ini
 generate_api_json.sh
 api.json
+playwright_server
+generate_perl_modules.pl
+clean_generated_files.sh

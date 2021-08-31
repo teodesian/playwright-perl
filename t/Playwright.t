@@ -12,6 +12,7 @@ use Test::Mock::Cmd qx => sub { $? = $qxcode; return $qxret }, system => sub { p
 no warnings qw{redefine once};
 $Playwright::SKIP_BEGIN = 1;
 use warnings;
+
 require Playwright;
 
 my $path2here = File::Basename::dirname(Cwd::abs_path($INC{'Playwright.pm'}));
@@ -26,38 +27,6 @@ subtest "_check_and_build_spec" => sub {
 
     undef $Playwright::spec;
     like(exception { Playwright::_check_and_build_spec({ ua => 'eeep', port => 666} ) },qr/Could not retrieve/,"Fetch explodes when playwright_server doesn't have spec");
-};
-
-subtest "_build_classes" => sub {
-    local $Playwright::spec = {
-        Fake => {
-            members => {
-                tickle => {
-                    args => {
-                        chase => { type => { name => 'boolean' }, order => 1 },
-                        tickleOptions => {
-                            order => 0,
-                            type => {
-                                name => 'Object',
-                                properties => {
-                                    intense  => { name => 'intense',  type => { name => 'boolean' }  },
-                                    tickler  => { name => 'tickler',  type => { name => 'string'  }  },
-                                    optional => { name => 'optional', type => { name => 'boolean' }  }, # Optional, shouldn't show up in output
-                                },
-                            },
-                        },
-                        who => { type => { name => 'string' },  order => 2 },
-                        hug => { type => { name => 'boolean' }, order => 3 }, # Optional bool arg, make sure we dont choke
-                    },
-                },
-            }
-        },
-    };
-
-    #Very light testing here, example.pl is really what tests this
-    Playwright::_build_classes();
-    ok(defined &Playwright::Fake::new, "Constructors set up correctly");
-    ok(defined &Playwright::Fake::tickle, "Class methods set up correctly");
 };
 
 subtest "_check_node" => sub {

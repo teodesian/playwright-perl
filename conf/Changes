@@ -1,0 +1,55 @@
+Revision history for Playwright
+
+0.013 2021-08-31 TEODESIAN
+    - Statically generate playwright subclasses so that callers can easily wrap them with MOPs.
+    - allow evaluate() to be called on ElementHandles
+
+0.012 2021-08-03 TEODESIAN
+    - Automatically translate element handles passed as args objects to the playwright process.
+
+0.011 2021-07-27 TEODESIAN
+    - Make no attempts whatsoever to install node deps for users, instead giving them advice how to self-service fix their problems.
+
+0.010 2021-07-27 TEODESIAN
+    - Fix issue with yargs fix breaking invocation in Playwright.pm
+    - Fix issue with child selectors being broken
+    - Add ability to specify library path
+
+0.009 2021-07-26 TEODESIAN
+    - Remove dependency on yargs in bin/playwright_server
+
+0.008 2021-07-16 TEODESIAN
+    - Add parent attribute to grab element parents when needed
+    - Remove dependency on AsyncData in favor of File::Temp, Sereal and fork().
+    - Prevent destructors for other objects firing in forks used to do asynchronous operations.
+
+0.007 2021-06-17 TEODESIAN
+    - Adjust module for changing Download returns, and api.json no longer being shipped with Playwright
+    - Fix some warnings when installing for the first time.
+
+0.006 2021-04-12 TEODESIAN
+    - Prevent $? from bubbling up in our destructor and invalidating program exit code by localizing $? in quit()
+    - Add a link to the Playwright slack in the documentation.
+
+0.005 2021-03-24 TEODESIAN
+    [BUG FIXES]
+    - Prevent double destroy in the event of quit() being called
+    - Make the destroy() process a good deal more reliable
+    - Add a timeout parameter to new() to control how long to wait for the server to spin up/down
+    - Improve documentation
+    - Adjust auto-install process to work better on windows, and not leak stderr in some contexts.
+
+0.004 2021-03-19 TEODESIAN
+    [BUG FIXES]
+    - Adjust spec parser for newer Playwright spec versions
+
+0.003 2021-03-16 TEODESIAN
+    [BUG FIXES]
+    - Fix broken testsuite
+
+0.002 2021-02-10 TEODESIAN
+    [BUG FIXES]
+    - Declare perl 5.28 to be minimum version
+
+0.001 2020-11-02 TEODESIAN
+    - First release to CPAN

@@ -21,6 +21,9 @@ use Carp qw{confess};
 use Playwright::Base();
 use Playwright::Util();
 
+# Stuff closet full of skeletons at BEGIN time
+use Playwright::ModuleList();
+
 no warnings 'experimental';
 use feature qw{signatures};
 
@@ -81,7 +84,7 @@ To fix this, you will need to update your NODE_PATH environment variable to poin
 Feel free to join the Playwright slack server, as there is a dedicated #playwright-perl channel which I, the module author, await your requests in.
 L<https://aka.ms/playwright-slack>
 
-=head3 Why this documentation does not list all available subclasses and their methods
+=head3 Documentation for Playwright Subclasses
 
 The documentation and names for the subclasses of Playwright follow the spec strictly:
 
@@ -89,9 +92,8 @@ Playwright::BrowserContext => L<https://playwright.dev/docs/api/class-browsercon
 Playwright::Page           => L<https://playwright.dev/docs/api/class-page>
 Playwright::ElementHandle  => L<https://playwright.dev/docs/api/class-elementhandle>
 
-...And so on.  100% of the spec is accessible regardless of the Playwright version installed
-due to these classes & their methods being built dynamically at run time based on the specification
-which is shipped with Playwright itself.
+...And so on.  These classes are automatically generated during module build based on the spec hash built by playwright.
+See generate_api_json.sh and generate_perl_modules.pl if you are interested in how this sausage is made.
 
 You can check what methods are installed for each subclass by doing the following:
 
@@ -140,6 +142,9 @@ L<https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/ar
 You can also pass Playwright::ElementHandle objects as returned by the select() and selectMulti() routines.
 They will be correctly translated into DOMNodes as you would get from the querySelector() javascript functions.
 
+Calling evaluate() and evaluateHandle() on Playwright::Element objects will automatically pass the DOMNode as the first argument to your script.
+See below for an example of doing this.
+
 =head3 example of evaluate()
 
     # Read the console
@@ -153,10 +158,14 @@ They will be correctly translated into DOMNodes as you would get from the queryS
 
     print "Logged to console: '".$console_log->text()."'\n";
 
+    # Convenient usage of evaluate on ElementHandles
+    # We pass the element itself as the first argument to the JS arguments array for you
+    $element->evaluate('arguments[0].style.backgroundColor = "#FF0000"; return 1;');
+
 
 =head2 Asynchronous operations
 
-The waitFor* methods defined on various classes are essentially a light wrapper around Mojo::IOLoop::Subprocess.
+The waitFor* methods defined on various classes fork and exec, waiting on the promise to complete.
 You will need to wait on the result of the backgrounded action with the await() method documented below.
 
     # Assuming $handle is a Playwright object
@@ -203,7 +212,7 @@ Creates a new browser and returns a handle to interact with it.
 
 =cut
 
-our ( $spec, $server_bin, $node_bin, %mapper, %methods_to_rename );
+our ( $spec, $server_bin, $node_bin, %mapper );
 
 sub _check_node {
 
@@ -247,30 +256,6 @@ sub _check_node {
 }
 
 sub _build_classes {
-    $mapper{mouse} = sub {
-        my ( $self, $res ) = @_;
-        return Playwright::Mouse->new(
-            handle => $self,
-            id     => $res->{_guid},
-            type   => 'Mouse'
-        );
-    };
-    $mapper{keyboard} = sub {
-        my ( $self, $res ) = @_;
-        return Playwright::Keyboard->new(
-            handle => $self,
-            id     => $res->{_guid},
-            type   => 'Keyboard'
-        );
-    };
-
-    %methods_to_rename = (
-        '$'      => 'select',
-        '$$'     => 'selectMulti',
-        '$eval'  => 'eval',
-        '$$eval' => 'evalMulti',
-    );
-
     foreach my $class ( keys(%$spec) ) {
         $mapper{$class} = sub {
             my ( $self, $res ) = @_;
@@ -282,67 +267,6 @@ sub _build_classes {
                 parent => $self,
             );
         };
-
-        #All of the Playwright::* Classes are made by this MAGIC
-        Sub::Install::install_sub(
-            {
-                code => sub ( $classname, %options ) {
-                    @class::ISA = qw{Playwright::Base};
-                    $options{type} = $class;
-                    return Playwright::Base::new( $classname, %options );
-                },
-                as   => 'new',
-                into => "Playwright::$class",
-            }
-        ) unless "Playwright::$class"->can('new');;
-
-        # Hack in mouse and keyboard objects for the Page class
-        if ( $class eq 'Page' ) {
-            foreach my $hid (qw{keyboard mouse}) {
-                Sub::Install::install_sub(
-                    {
-                        code => sub {
-                            my $self = shift;
-                            $Playwright::mapper{$hid}->(
-                                $self,
-                                {
-                                    _type => $self->{type},
-                                    _guid => $self->{guid}
-                                }
-                            ) if exists $Playwright::mapper{$hid};
-                        },
-                        as   => $hid,
-                        into => "Playwright::$class",
-                    }
-                ) unless "Playwright::$class"->can($hid);
-            }
-        }
-
-        # Install the subroutines if they aren't already
-        foreach my $method ( ( keys( %{ $spec->{$class}{members} } ), 'on' ) ) {
-            next if grep { $_ eq $method } qw{keyboard mouse};
-            my $renamed =
-              exists $methods_to_rename{$method}
-              ? $methods_to_rename{$method}
-              : $method;
-
-            Sub::Install::install_sub(
-                {
-                    code => sub {
-                        my $self = shift;
-                        Playwright::Base::_request(
-                            $self,
-                            args    => [@_],
-                            command => $method,
-                            object  => $self->{guid},
-                            type    => $self->{type}
-                        );
-                    },
-                    as   => $renamed,
-                    into => "Playwright::$class",
-                }
-            ) unless "Playwright::$class"->can($renamed);
-        }
     }
 }
 

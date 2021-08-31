@@ -1,0 +1,234 @@
+#!/usr/bin/node
+
+"use strict";
+
+// If we don't have this, we're done for
+const { exit } = require('process');
+const fs = require('fs');
+const path = require('path');
+
+// Assume their kit is good
+require('uuid');
+require('playwright');
+require('express');
+
+// Get what we actually want from our deps
+const { v4 : uuidv4 } = require('uuid');
+const { chromium, firefox, webkit, devices } = require('playwright');
+const express = require('express');
+
+// Defines our interface
+// let sharedir = require.resolve('playwright'); // api.json should be shipped with playwright itself
+// var theFile = path.dirname(sharedir) + '/api.json';
+// let rawdata = fs.readFileSync(theFile);
+
+// This is automatically inserted via sed
+let spec =%REPLACEME%
+
+function arr2hash (arr,primary_key) {
+    var inside_out = {};
+    for (var item of arr) {
+        inside_out[item.name] = item;
+    }
+    return inside_out;
+}
+
+var fix_it=false;
+if (spec instanceof Array) {
+    fix_it = true;
+    spec = arr2hash(spec,'name');
+}
+
+// Establish argument order for callers, and correct spec array-ification
+for (var classname of Object.keys(spec)) {
+    if (spec[classname].members instanceof Array) {
+        spec[classname].members = arr2hash(spec[classname].members,'name');
+    }
+    for (var method of Object.keys(spec[classname].members)) {
+        var order = 0;
+        if (spec[classname].members[method].args instanceof Array) {
+            spec[classname].members[method].args = arr2hash(spec[classname].members[method].args,'name');
+        }
+        for (var arg of Object.keys(spec[classname].members[method].args) ) {
+            spec[classname].members[method].args[arg].order = order++;
+        }
+    }
+}
+
+//XXX spec is wrong here unfortunately
+if (fix_it) {
+    for (var className of ['Page','Frame','ElementHandle']) {
+        spec[className].members.$$     = spec[className].members.querySelectorAll;
+        spec[className].members.$      = spec[className].members.querySelector;
+        spec[className].members.$$eval = spec[className].members.evalOnSelectorAll;
+        spec[className].members.$eval  = spec[className].members.evalOnSelector;
+    }
+}
+
+// Parse arguments
+var args = process.argv.slice(2);
+
+if ( args.filter(arg => arg == '--help' || arg == '-h' || arg == '-?' ).length > 0 ) {
+    console.log("Usage:\nplaywright_server [--debug | --check | --port PORT | --help]");
+    exit(0);
+}
+
+if ( args.filter(arg => arg == '--check').length > 0 ) {
+    console.log('OK');
+    exit(0);
+}
+
+var debug = false;
+if ( args.filter(arg => arg == '--debug').length > 0 ) {
+    debug = true;
+}
+
+var got_port = 6969;
+if ( args.filter(arg => arg == '--port').length > 0 ) {
+    var pos = args.indexOf('--port') + 1;
+    if (pos != 0) {
+        got_port = args[pos];
+    }
+}
+
+const app = express();
+const port = got_port;
+
+var objects = {};
+var browsers = { 'firefox' : firefox, 'chrome' : chromium, 'webkit' : webkit };
+
+//Stash for users to put data in
+var userdata = {};
+
+app.use(express.json())
+
+app.get('/spec', async (req, res) => {
+    res.json( { error : false, message : spec } );
+});
+
+app.post('/session', async (req, res) => {
+    var payload = req.body;
+    var type    = payload.type;
+    var args    = payload.args || [];
+
+    if (debug) {
+        console.log("Got launch arguments:");
+        console.log(args);
+    }
+
+    var result;
+    if ( type && browsers[type] ) {
+        try {
+            var browser = await browsers[type].launch(...args);
+            objects[browser._guid] = browser;
+            result = { error : false, message : browser };
+        } catch (e) {
+            result = { error : true, message : e.message};
+        }
+    } else {
+        result = { error : true, message : "Please select a supported browser" };
+    }
+    res.json(result);
+});
+
+app.post('/command', async (req, res) => {
+
+    var payload = req.body;
+    var type    = payload.type;
+    var object  = payload.object;
+    var command = payload.command;
+    var args    = payload.args || [];
+    var result = {};
+
+    if (debug) {
+        console.log(type,object,command,args);
+    }
+
+    // XXX this would be cleaner if the mouse() and keyboard() methods just returned a Mouse and Keyboard object
+    var subject = objects[object];
+    if (subject) {
+        if (type == 'Mouse') {
+            subject = objects[object].mouse;
+        } else if (type == 'Keyboard' ) {
+            subject = objects[object].keyboard;
+        }
+    }
+
+    if (subject && spec[type] && spec[type].members[command]) {
+        try {
+
+            //XXX We have to do a bit of 'special' handling for scripts
+            // This has implications for the type of scripts you can use
+            // In addition, we translate anything with a guid (previously found elements)
+            if (command == 'evaluate' || command == 'evaluateHandle') {
+                var toEval = args.shift();
+                const fun = new Function (toEval);
+                args = args.map( x =>
+                    x.uuid ? objects[x.uuid] : x
+                );
+                args = [
+                    fun,
+                    ...args
+                ];
+            }
+            const res = await subject[command](...args);
+            result = { error : false, message : res };
+
+            if (Array.isArray(res)) {
+                for (var r of res) {
+                    objects[r._guid] = r;
+                }
+            }
+
+            // XXX videos are special, we have to magic up a guid etc for them
+            if (command == 'video' && res) {
+                res._guid = 'Video@' + uuidv4();
+                res._type = 'Video';
+            }
+            // XXX So are FileChooser object unfortunately
+            if (args[0] == 'filechooser' && res) {
+                res._guid = 'FileChooser@' + uuidv4();
+                res._type = 'FileChooser';
+            }
+            // XXX Downloads too sigh
+            if (command == 'waitForEvent' && res._artifact) {
+                res._guid = 'Download@' + uuidv4();
+                res._type = 'Download';
+            }
+
+            if (res && res._guid) {
+                objects[res._guid] = res;
+            }
+        } catch (e) {
+            result = { error : true, message : e.message };
+        }
+    // Allow creation of event listeners if we can actually wait for them
+    } else if (command == 'on' && subject && spec[type].members.waitForEvent ) {
+        try {
+            var evt = args.shift();
+            const cb  = new Function (args.shift());
+            subject.on(evt,cb);
+            result = { error : false, message : "Listener set up" };
+        } catch (e) {
+            result = { error : true, message : e.message };
+        }
+    } else {
+        result = { error : true, message : "No such object, or " + command + " is not a globally recognized command for Playwright" };
+    }
+
+    res.json(result);
+});
+
+app.get('/shutdown', async (req, res) => {
+    res.json( { error: false, message : "Sent kill signal to browser" });
+    process.exit(0);
+});
+
+//Modulino
+if (require.main === module) {
+    app.listen( port, () => {
+        if (debug) {
+            console.log(`Listening on port ${port}`);
+        }
+    });
+}
