@@ -3,6 +3,7 @@ Revision history for Playwright
 0.014 2021-09-09 TEODESIAN
     - Add cleanup option to Playwright::new, and bin/reap_playwright_servers to assist in cleanup when doing manual investigations.
     - Fix issue with reference to eval() rather than evaluate()
+    - Launch via browserServerLaunch so we can interrogate playwright for the browser PID
 
 0.013 2021-08-31 TEODESIAN
     - Statically generate playwright subclasses so that callers can easily wrap them with MOPs.
