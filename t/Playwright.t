@@ -81,6 +81,7 @@ subtest "new" => sub {
         pid    => 666,
         port   => 420,
         timeout => 5,
+        cleanup => 1,
     }, 'Playwright');
 
     is(Playwright->new( timeout => 5, ua => 'whee', debug => 1), $expected, "Constructor functions as expected");
@@ -92,6 +93,7 @@ subtest "new" => sub {
         pid    => 666,
         port   => 420,
         timeout => 30,
+        cleanup => 1,
     }, 'Playwright');
 
     is(Playwright->new(), $expected, "Constructor defaults expected");
