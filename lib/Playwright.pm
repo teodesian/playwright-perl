@@ -192,6 +192,14 @@ To suppress this behavior (such as in the event you are await()ing a download ev
     # Assuming $handle is a Playwright object
     my $browser = $handle->launch( type => 'firefox', firefoxUserPrefs => { 'pdfjs.disabled' => JSON::true } );
 
+=head2 Leaving browsers alive for manual debugging
+
+Passing the cleanup => 0 parameter to new() will prevent DESTROY() from cleaning up the playwright server when a playwright object goes out of scope.
+
+Be aware that this will prevent debug => 1 from printing extra messages from playwright_server itself, as we redirect the output streams in this case so as not to fill your current session with prints later.
+
+A convenience script has been provided to clean up these orphaned instances, `reap_playwright_servers` which will kill all extant `playwright_server` processes.
+
 =head1 INSTALLATION NOTE
 
 If you install this module from CPAN, you will likely encounter a croak() telling you to install node module dependencies.
@@ -207,8 +215,9 @@ Creates a new browser and returns a handle to interact with it.
 
 =head3 INPUT
 
-    debug (BOOL) : Print extra messages from the Playwright server process
+    debug (BOOL) : Print extra messages from the Playwright server process. Default: false
     timeout (INTEGER) : Seconds to wait for the playwright server to spin up and down.  Default: 30s
+    cleanup (BOOL) : Whether or not to clean up the playwright server when this object goes out of scope.  Default: true
 
 =cut
 
@@ -285,7 +294,8 @@ sub new ( $class, %options ) {
             ua      => $options{ua} // LWP::UserAgent->new(),
             port    => $port,
             debug   => $options{debug},
-            pid     => _start_server( $port, $timeout, $options{debug} ),
+            cleanup => $options{cleanup} // 1,
+            pid     => _start_server( $port, $timeout, $options{debug}, $options{cleanup} // 1 ),
             parent  => $$,
             timeout => $timeout,
         },
@@ -375,6 +385,9 @@ sub quit ($self) {
     # This should also prevent the waitpid below from deadlocking due to two processes waiting on the same pid.
     return unless $$ == $self->{parent};
 
+    # Prevent destructor from firing in the event the caller instructs it to not fire
+    return unless $self->{cleanup};
+
     # Make sure we don't mash the exit code of things like prove
     local $?;
 
@@ -406,7 +419,7 @@ sub DESTROY ($self) {
     $self->quit();
 }
 
-sub _start_server ( $port, $timeout, $debug ) {
+sub _start_server ( $port, $timeout, $debug, $cleanup ) {
     $debug = $debug ? '-d' : '';
 
     $ENV{DEBUG} = 'pw:api' if $debug;
@@ -416,9 +429,20 @@ sub _start_server ( $port, $timeout, $debug ) {
         Net::EmptyPort::wait_port( $port, $timeout )
           or confess("Server never came up after 30s!");
         print "done\n" if $debug;
+
         return $pid;
     }
 
+    # Orphan the process in the event that cleanup => 0
+    if (!$cleanup) {
+        print "Detaching child process...\n";
+        chdir '/';
+        require POSIX;
+        die "Cannot detach playwright_server process for persistence" if POSIX::setsid() < 0;
+        require Capture::Tiny;
+        capture_merged { exec( $node_bin, $server_bin, "--port", $port, $debug ) };
+        die("Could not exec!");
+    }
     exec( $node_bin, $server_bin, "--port", $port, $debug );
 }
 

@@ -1,0 +1,31 @@
+#!/usr/bin/perl
+
+package Playwright::ServerReaper;
+
+use strict;
+use warnings;
+
+use Proc::ProcessTable;
+use Playwright::Util;
+use LWP::UserAgent;
+
+exit main() unless caller;
+
+sub main {
+    my $t = Proc::ProcessTable->new;
+    my @matches = grep { $_->cmndline =~ m/playwright_server --port/ } @{$t->table};
+
+    my $ua = LWP::UserAgent->new();
+
+    foreach my $process (@matches) {
+       print "$process->cmndline\n";
+       my ($port) = $process->cmndline =~ m/playwright_server --port (\d+)/;
+       next unless $port;
+       print "Instructing playwright_server process ".$process->pid()." listening on $port to shut down...\n";
+       Playwright::Util::request( 'GET', 'shutdown', $port, $ua );
+    }
+
+    return 0;
+}
+
+1;
