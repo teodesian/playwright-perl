@@ -200,6 +200,19 @@ Be aware that this will prevent debug => 1 from printing extra messages from pla
 
 A convenience script has been provided to clean up these orphaned instances, `reap_playwright_servers` which will kill all extant `playwright_server` processes.
 
+=head2 Taking videos
+
+We spawn browsers via BrowserType.launchServer() and then connect to them over websocket.
+This means you can't just set paths up front and have videos recorded, the Video.path() method will throw.
+Instead you will need to call the Video.saveAs() method after closing a page to record video:
+
+    # Do stuff
+    ...
+    # Save video
+    my $video = $page->video;
+    $page->close();
+    $video->saveAs('video/example.webm');
+
 =head1 INSTALLATION NOTE
 
 If you install this module from CPAN, you will likely encounter a croak() telling you to install node module dependencies.
@@ -344,11 +357,39 @@ sub launch ( $self, %args ) {
         type => delete $args{type},
         args => [ \%args ]
     );
+
     return $Playwright::mapper{ $msg->{_type} }->( $self, $msg )
       if ( ref $msg eq 'HASH' )
       && $msg->{_type}
       && exists $Playwright::mapper{ $msg->{_type} };
     return $msg;
+}
+
+=head2 server (HASH) = MIXED
+
+Call Playwright::BrowserServer methods on the server which launched your browser object.
+
+Parameters:
+
+    browser : The Browser object you wish to call a server method upon.
+    command : The BrowserServer method you wish to call
+
+The most common use for this is to get the PID of the underlying browser process:
+
+    my $browser = $playwright->launch( browser => chrome );
+    my $process = $playwright->server( browser => $browser, command => 'process' );
+    print "Browser process PID: $process->{pid}\n";
+
+BrowserServer methods (at the time of writing) take no arguments, so they are not processed.
+
+=cut
+
+sub server ( $self, %args ) {
+    return Playwright::Util::request(
+        'POST', 'server', $self->{port}, $self->{ua},
+        object  => $args{browser}{guid},
+        command => $args{command},
+    );
 }
 
 =head2 await (HASH) = Object

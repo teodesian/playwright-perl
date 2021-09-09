@@ -11,13 +11,11 @@ my $handle = Playwright->new( debug => 1 );
 
 # Open a new chrome instance
 my $browser = $handle->launch( headless => 1, type => 'firefox' );
+my $process = $handle->server( browser => $browser, command => 'process' );
+print "Browser PID: ".$process->{pid}."\n";
 
 # Open a tab therein
 my $page = $browser->newPage({ videosPath => 'video', acceptDownloads => 1 });
-my $bideo = $page->video;
-
-my $vidpath = $bideo->path;
-print "Video Path: $vidpath\n";
 
 # Browser contexts don't exist until you open at least one page.
 # You'll need this to grab and set cookies.
@@ -124,3 +122,9 @@ my $parent = $page->select('body');
 my $child = $parent->select('#drphil');
 print ref($child)."\n";
 
+# Save a video now that we are done
+my $bideo = $page->video;
+
+# IT IS IMPORTANT TO CLOSE THE PAGE FIRST OR THIS WILL HANG!
+$page->close();
+my $vidpath = $bideo->saveAs('video/example.webm');

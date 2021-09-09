@@ -119,7 +119,10 @@ app.post('/session', async (req, res) => {
     var result;
     if ( type && browsers[type] ) {
         try {
-            var browser = await browsers[type].launch(...args);
+            var browserServer = await browsers[type].launchServer(...args);
+            var wsEndpoint = browserServer.wsEndpoint();
+            var browser = await browsers[type].connect({ wsEndpoint });
+            browser.server = browserServer;
             objects[browser._guid] = browser;
             result = { error : false, message : browser };
         } catch (e) {
@@ -127,6 +130,19 @@ app.post('/session', async (req, res) => {
         }
     } else {
         result = { error : true, message : "Please select a supported browser" };
+    }
+    res.json(result);
+});
+
+app.post('/server', async (req, res) => {
+    var payload = req.body;
+    var object  = payload.object;
+    var command = payload.command;
+    var result = { error : true, message : "Please pass a valid browser object ID. got:", object };
+    console.log(object,command);
+    if (objects[object]) {
+        var msg = objects[object].server[command](...args);
+        result = { error : false, message : msg };
     }
     res.json(result);
 });
