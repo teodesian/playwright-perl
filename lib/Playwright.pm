@@ -113,7 +113,7 @@ The renamed functions are as follows:
 
 =item $$ => selectMulti
 
-=item $eval => eval
+=item $eval => evaluate
 
 =item $$eval => evalMulti
 
