@@ -200,7 +200,7 @@ Be aware that this will prevent debug => 1 from printing extra messages from pla
 
 A convenience script has been provided to clean up these orphaned instances, `reap_playwright_servers` which will kill all extant `playwright_server` processes.
 
-=head2 Taking videos
+=head2 Taking videos, Making Downloads
 
 We spawn browsers via BrowserType.launchServer() and then connect to them over websocket.
 This means you can't just set paths up front and have videos recorded, the Video.path() method will throw.
@@ -212,6 +212,22 @@ Instead you will need to call the Video.saveAs() method after closing a page to 
     my $video = $page->video;
     $page->close();
     $video->saveAs('video/example.webm');
+
+It's a similar story with Download classes:
+
+    # Do stuff
+    ...
+    # Wait on Download
+    my $promise = $page->waitForEvent('download')
+    # Do some thing triggering a download
+    ...
+
+    my $download = $handle->await( $promise );
+    $download->saveAs('somefile.extension');
+
+Remember when doing an await() with playwright-perl you are waiting on a remote process on a server to complete, which can time out.
+You may wish to spawn a subprocess using a different tool to download very large files.
+If this is not an option, consider increasing the timeout on the LWP object used by the Playwright object (it's the 'ua' member of the class).
 
 =head1 INSTALLATION NOTE
 

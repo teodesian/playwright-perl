@@ -1,5 +1,8 @@
 Revision history for Playwright
 
+0.015 2021-09-13 TEODESIAN
+    - Add a note on proper usage of Download classes to the POD.
+
 0.014 2021-09-09 TEODESIAN
     - Add cleanup option to Playwright::new, and bin/reap_playwright_servers to assist in cleanup when doing manual investigations.
     - Fix issue with reference to eval() rather than evaluate()
