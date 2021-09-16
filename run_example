@@ -1,0 +1,2 @@
+#!/bin/sh
+./clean_generated_files.sh && ./generate_api_json.sh && ./generate_perl_modules.pl && PATH="$(pwd)/bin:$PATH" perl -Ilib example.pl; ./clean_generated_files.sh && perl -Ilib bin/reap_playwright_servers

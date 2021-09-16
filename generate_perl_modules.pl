@@ -70,6 +70,9 @@ our %bogus_methods = (
     'evalOnSelectorAll' => '$$eval',
 );
 
+# Playwright methods we can't actually have work here
+our @banned = ('_request');
+
 my @modules;
 foreach my $class ( keys(%$spec), 'Mouse', 'Keyboard' ) {
     next if $class eq 'Playwright';
@@ -80,6 +83,7 @@ foreach my $class ( keys(%$spec), 'Mouse', 'Keyboard' ) {
 
     my $members = Playwright::Util::arr2hash($spec->{$class}{members},'name');
     foreach my $method ( ( keys( %$members ), 'on', 'evaluate', 'evaluateHandle' ) ) {
+        next if grep { $_ eq $method } @banned;
         my $renamed = $method;
         $method  = $bogus_methods{$method}     if exists $bogus_methods{$method};
         $renamed = $methods_to_rename{$method} if exists $methods_to_rename{$method};

@@ -109,6 +109,8 @@ $page->select('#d-lo')->click();
 
 my $download = $handle->await( $promise );
 
+print "Download suggested filename\n";
+print $download->suggestedFilename()."\n";
 $download->saveAs('test2.jpg');
 
 # Fiddle with file inputs

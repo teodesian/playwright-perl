@@ -62,6 +62,8 @@ then run `generate_api_json.sh` to get things working such that the build script
 
 Then run `generate_perl_modules.pl` to get the accessor classes built based off of the spec, and insert the spec JSON into the playwright_server binary.
 
+To make life simple, you can just run `run_example` in the TLD when debugging.
+
 ## Questions?
 Hop into the playwright slack, and check out the #playwright-perl channel therein.
 I'm watching that space and should be able to answer your questions.
