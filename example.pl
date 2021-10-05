@@ -124,6 +124,22 @@ my $parent = $page->select('body');
 my $child = $parent->select('#drphil');
 print ref($child)."\n";
 
+# Test out pusht/popt/try_until
+
+# Timeouts are in milliseconds
+Playwright::pusht($page,5000);
+my $checkpoint = time();
+my $element = Playwright::try_until($page, 'select', 'bogus-bogus-nothere');
+
+my $elapsed = time() - $checkpoint;
+Playwright::popt($page);
+print "Waited $elapsed seconds for timeout to drop\n";
+
+$checkpoint = time();
+$element = Playwright::try_until($page, 'select', 'bogus-bogus-nothere');
+$elapsed = time() - $checkpoint;
+print "Waited $elapsed seconds for timeout to drop\n";
+
 # Try out the "experimental" API testing extensions (FetchRequests)
 print "HEAD http://google.com : \n";
 my $fr = $page->_request();
