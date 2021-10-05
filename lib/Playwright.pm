@@ -71,7 +71,7 @@ All the classes mentioned there will correspond to a subclass of the Playwright 
 
 See example.pl for a more thoroughly fleshed-out display on how to use this module.
 
-=head3 Getting Started
+=head2 Getting Started
 
 When using the playwright module for the first time, you may be told to install node.js libraries.
 It should provide you with instructions which will get you working right away.
@@ -79,12 +79,12 @@ It should provide you with instructions which will get you working right away.
 However, depending on your node installation this may not work due to dependencies for node.js not being in the expected location.
 To fix this, you will need to update your NODE_PATH environment variable to point to the correct location.
 
-=head3 Questions?
+=head2 Questions?
 
 Feel free to join the Playwright slack server, as there is a dedicated #playwright-perl channel which I, the module author, await your requests in.
 L<https://aka.ms/playwright-slack>
 
-=head3 Documentation for Playwright Subclasses
+=head2 Documentation for Playwright Subclasses
 
 The documentation and names for the subclasses of Playwright follow the spec strictly:
 
@@ -242,6 +242,41 @@ Here's how you go about that:
 
 The _request() method will give you a Playwright::FetchRequest object, which you can then call whichever methods you like upon.
 When you call fetch (or get, post, etc) you will then be returned a Playwright::FetchResponse object.
+
+=head3 Default timeouts
+
+We set the default timeout for operations to 30 seconds for browser contexts.
+
+=head2 Perl equivalents for playwright-test
+
+This section is intended to be read alongside the playwright-test documentation to aid understanding of common browser testing techniques.
+The relevant documentation section will be linked for each section.
+
+=head3 Annotations
+
+L<https://playwright.dev/docs/test-annotations/>
+
+Both L<Test::More> and L<Test2::V0> provide an equivalent to all the annotations but slow():
+
+=over 4
+
+=item B<skip or fixme> - Test::More::skip or Test2::Tools::Basic::skip handle both needs
+
+=item B<fail> - Test::More TODO blocks and Test2::Tools::Basic::todo
+
+=item B<slow> - Has no equivalent off the shelf.  Playwright::pusht() and Playwright::popt() are here to help.
+
+    # Examples assume you have a $browser object.
+
+    # Timeouts are in milliseconds
+    Playwright::pusht($browser,5000);
+    # Do various things...
+    ...
+    Playwright::popt($browser);
+
+See L<https://playwright.dev/docs/api/class-browsercontext#browser-context-set-default-timeout> for more on setting default timeouts in playwright.
+
+=back
 
 =head1 INSTALLATION NOTE
 
@@ -438,6 +473,62 @@ sub await ( $self, $promise ) {
         id     => $obj->{_guid},
         handle => $self
     );
+}
+
+=head2 pusht(Playwright::Browser | Playwright::Page, INTEGER timeout, BOOL navigation) = null
+
+Like pushd/popd, but for default timeouts used by a Playwright::Browser (or Playwright::Page) object and it's children.
+
+In the event that you pass a browser, it will set the timeout for each available BrowserContext.
+Most of the time you should pass a Playwright::Page, as it's timeouts take precedence.
+
+If the 'navigation' option is high, we set the NavigationTimeout rather than the DefaultTimeout.
+By default 'navigation' is false.
+
+=cut
+
+sub pusht($object,$timeout, $navigation=0) {
+    my $objtype = ref $object;
+    my $objs = [$object];
+    if ($objtype eq 'Playwright::Browser') {
+        $objs = $object->contexts();
+    }
+
+    foreach my $obj (@$objs) {
+        $obj->{timeouts} //= [];
+        push(@{$obj->{$timeouts}}, $timeout);
+        if ($navigation) {
+            $object->setDefaultNavigationTimeout($timeout);
+            next;
+        }
+        $object->setDefaultTimeout($timeout);
+    }
+    return;
+}
+
+=head2 popt(Playwright::Browser, BOOL navigation) = null
+
+The counterpart to pusht() which returns the timeout value to it's previous value.
+
+=cut
+
+sub popt ($object, $navigation=0) {
+    my $objtype = ref $object;
+    my $objs = [$object];
+    if ($objtype eq 'Playwright::Browser') {
+        $objs = $object->contexts();
+    }
+
+    foreach my $obj (@$objs) {
+        $obj->{timeouts} //= [];
+        my $last_timeout = pop(@{$obj->{$timeouts}}) // 30000;
+        if ($navigation) {
+            $object->setDefaultNavigationTimeout($timeout);
+            next;
+        }
+        $object->setDefaultTimeout($timeout);
+    }
+    return;
 }
 
 =head2 quit, DESTROY
