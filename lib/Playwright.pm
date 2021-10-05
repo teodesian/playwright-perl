@@ -71,7 +71,7 @@ All the classes mentioned there will correspond to a subclass of the Playwright 
 
 See example.pl for a more thoroughly fleshed-out display on how to use this module.
 
-=head3 Getting Started
+=head2 Getting Started
 
 When using the playwright module for the first time, you may be told to install node.js libraries.
 It should provide you with instructions which will get you working right away.
@@ -79,12 +79,12 @@ It should provide you with instructions which will get you working right away.
 However, depending on your node installation this may not work due to dependencies for node.js not being in the expected location.
 To fix this, you will need to update your NODE_PATH environment variable to point to the correct location.
 
-=head3 Questions?
+=head2 Questions?
 
 Feel free to join the Playwright slack server, as there is a dedicated #playwright-perl channel which I, the module author, await your requests in.
 L<https://aka.ms/playwright-slack>
 
-=head3 Documentation for Playwright Subclasses
+=head2 Documentation for Playwright Subclasses
 
 The documentation and names for the subclasses of Playwright follow the spec strictly:
 
@@ -242,6 +242,100 @@ Here's how you go about that:
 
 The _request() method will give you a Playwright::FetchRequest object, which you can then call whichever methods you like upon.
 When you call fetch (or get, post, etc) you will then be returned a Playwright::FetchResponse object.
+
+=head3 Differences in behavior from Selenium::Remote::Driver
+
+By default selenium has its selector methods obeying a timeout and waits for an element to appear.
+It then explodes when and element can't be found.
+
+To replicate this mode of operation, we have provided the try_until helper:
+
+    # Args are $object, $method, @args
+    my $element = Playwright::try_until($page, 'select', $selector) or die ...;
+
+This will use the timeouts described by pusht/popt (see below).
+
+=head2 Perl equivalents for playwright-test
+
+This section is intended to be read alongside the playwright-test documentation to aid understanding of common browser testing techniques.
+The relevant documentation section will be linked for each section.
+
+=head3 Annotations
+
+L<https://playwright.dev/docs/test-annotations/>
+
+Both L<Test::More> and L<Test2::V0> provide an equivalent to all the annotations but slow():
+
+=over 4
+
+=item B<skip or fixme> - Test::More::skip or Test2::Tools::Basic::skip handle both needs
+
+=item B<fail> - Test::More TODO blocks and Test2::Tools::Basic::todo
+
+=item B<slow> - Has no equivalent off the shelf.  Playwright::pusht() and Playwright::popt() are here to help.
+
+    # Examples assume you have a $page object.
+
+    # Timeouts are in milliseconds
+    Playwright::pusht($page,5000);
+    # Do various things...
+    ...
+    Playwright::popt($page);
+
+See L<https://playwright.dev/docs/api/class-browsercontext#browser-context-set-default-timeout> for more on setting default timeouts in playwright.
+By default we assume the timeout to be 30s.
+
+=back
+
+=head3 Assertions
+
+As with before, most of the functionality here is satisfied with perl's default testing libraries.
+In particular, like() and cmp_bag() will do most of what you want here.
+
+=head3 Authentication
+
+Much of the callback functionality used in these sections is provided by L<Test::Class> and it's fixtures.
+
+=head3 Command Line
+
+Both C<prove> and C<yath> have similar functionality, save for retrying flaky tests.
+That said, you shouldn't do that; good tests don't flake.
+
+=head3 Configuration
+
+All the configuration here can simply be passed to launch(), newPage() or other methods directly.
+
+=head3 Page Objects
+
+This is basically what L<Test::Class> was written for specifically; so that you could subclass testing of common components across pages.
+
+=head3 Parallelizing Tests
+
+Look into L<Test::Class::Moose>'s Parallel runmode, C<prove>'s -j option, or L<Test2::Aggregate>.
+
+=head3 Reporters
+
+When using C<prove>, consider L<Test::Reporter> coupled with L<App::Prove::Plugin>s using custom L<TAP::Formatter>s.
+Test2 as of this writing (October 2012) supports formatters and plugins, but no formatter plugins have been uploaded to CPAN.
+See L<Test2::Manual::Tooling::Formatter> on writing a formatter yourself, and then a L<Test2::Plugin> using it.
+
+=head3 Test Retry
+
+C<prove> supports tests in sequence via the --rules option.
+It's also got the handy --state options to further micromanage test execution over multiple iterations.
+You can use this to retry flaking tests, but it's not a great idea in practice.
+
+=head3 Visual Comparisons
+
+Use L<Image::Compare>.
+
+=head3 Advanced Configuration
+
+This yet again can be handled when instantiating the various playwright objects.
+
+=head3 Fixtures
+
+L<Test::Class> and it's many variants cover the subject well.
 
 =head1 INSTALLATION NOTE
 
@@ -438,6 +532,61 @@ sub await ( $self, $promise ) {
         id     => $obj->{_guid},
         handle => $self
     );
+}
+
+=head2 pusht(Playwright::Page, INTEGER timeout, BOOL navigation) = null
+
+Like pushd/popd, but for default timeouts used by a Playwright::Page object and it's children.
+
+If the 'navigation' option is high, we set the NavigationTimeout rather than the DefaultTimeout.
+By default 'navigation' is false.
+
+If we popt to the bottom of the stack, we will set the timeout back to 1 second.
+
+=cut
+
+sub pusht($object,$timeout, $navigation=0) {
+    $object->{timeouts} //= [];
+    push(@{$object->{timeouts}}, $timeout);
+    return $object->setDefaultNavigationTimeout($timeout) if $navigation;
+    return $object->setDefaultTimeout($timeout);
+}
+
+=head2 popt(Playwright::Page, BOOL navigation) = null
+
+The counterpart to pusht() which returns the timeout value to it's previous value.
+
+=cut
+
+sub popt ($object, $navigation=0) {
+    $object->{timeouts} //= [];
+    my $last_timeout = pop(@{$object->{timeouts}}) // 1000;
+    return $object->setDefaultNavigationTimeout($last_timeout) if $navigation;
+    return $object->setDefaultTimeout($last_timeout);
+}
+
+=head2 try_until(Object, STRING method, LIST args), try_until_die(...)
+
+Try to execute the provided method upon the provided Playwright::* object until it returns something truthy.
+Quits after the timeout (or 1s, if pusht is not used before this) defined on the object is reached.
+
+Use this for methods which *don't* support a timeout option, such as select().
+
+=cut
+
+sub try_until ($object, $method, @args) {
+    my ($ctr, $result, $timeout) = (0);
+    $timeout = $object->{timeouts}[-1] if ref $object->{timeouts} eq 'ARRAY';
+    $timeout = $timeout / 1000 if $timeout;
+    $timeout //= 1;
+    while (!$result) {
+        $result = $object->$method(@args);
+        last if $result;
+        sleep 1;
+        $ctr++;
+        last if $ctr >= $timeout;
+    };
+    return $result;
 }
 
 =head2 quit, DESTROY
