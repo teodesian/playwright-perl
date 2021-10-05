@@ -81,7 +81,7 @@ $utilmock->redefine('request', sub {
     return $result;
 });
 
-is( $obj->_request(%in), $result, "Data directly returned when no _type or _guid");
+is( $obj->_api_request(%in), $result, "Data directly returned when no _type or _guid");
 $result = { _guid => 666, _type => 'Fake' };
 my $exp_obj = Playwright::Fake->new(
     id     => 666,
@@ -89,7 +89,7 @@ my $exp_obj = Playwright::Fake->new(
     spec   => $Playwright::spec->{Fake}{members},
     handle => $obj
 );
-my $oot = $obj->_request(%in);
+my $oot = $obj->_api_request(%in);
 
 is( $oot, $exp_obj, "Object returned when _type or _guid returned");
 

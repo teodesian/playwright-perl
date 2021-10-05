@@ -124,6 +124,13 @@ my $parent = $page->select('body');
 my $child = $parent->select('#drphil');
 print ref($child)."\n";
 
+# Try out the "experimental" API testing extensions (FetchRequests)
+print "HEAD http://google.com : \n";
+my $fr = $page->_request();
+my $resp = $fr->fetch("http://google.com", { method => "HEAD" });
+print Dumper($resp->headers());
+print "200 OK\n" if $resp->status() == 200;
+
 # Save a video now that we are done
 my $bideo = $page->video;
 

@@ -86,7 +86,7 @@ sub _coerce ( $spec, %args ) {
     return %args;
 }
 
-sub _request ( $self, %args ) {
+sub _api_request ( $self, %args ) {
 
     %args = Playwright::Base::_coerce( $self->{spec}, %args );
 

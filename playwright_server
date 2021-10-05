@@ -139,7 +139,9 @@ app.post('/server', async (req, res) => {
     var object  = payload.object;
     var command = payload.command;
     var result = { error : true, message : "Please pass a valid browser object ID. got:", object };
-    console.log(object,command);
+    if (debug) {
+        console.log(object,command);
+    }
     if (objects[object]) {
         var msg = objects[object].server[command](...args);
         result = { error : false, message : msg };
@@ -187,33 +189,44 @@ app.post('/command', async (req, res) => {
                     ...args
                 ];
             }
-            const res = await subject[command](...args);
-            result = { error : false, message : res };
+            var commandResult;
+            if (command == '_request') {
+                //TODO extend this to other attribute fetches as well in the future
+                commandResult = subject[command];
+            } else {
+                commandResult = await subject[command](...args);
+            }
+            result = { error : false, message : commandResult };
 
-            if (Array.isArray(res)) {
-                for (var r of res) {
+            if (Array.isArray(commandResult)) {
+                for (var r of commandResult) {
                     objects[r._guid] = r;
                 }
             }
 
             // XXX videos are special, we have to magic up a guid etc for them
-            if (command == 'video' && res) {
-                res._guid = 'Video@' + uuidv4();
-                res._type = 'Video';
+            if (command == 'video' && commandResult) {
+                commandResult._guid = 'Video@' + uuidv4();
+                commandResult._type = 'Video';
             }
             // XXX So are FileChooser object unfortunately
-            if (args[0] == 'filechooser' && res) {
-                res._guid = 'FileChooser@' + uuidv4();
-                res._type = 'FileChooser';
+            if (args[0] == 'filechooser' && commandResult) {
+                commandResult._guid = 'FileChooser@' + uuidv4();
+                commandResult._type = 'FileChooser';
             }
             // XXX Downloads too sigh
-            if (command == 'waitForEvent' && res._artifact) {
-                res._guid = 'Download@' + uuidv4();
-                res._type = 'Download';
+            if (command == 'waitForEvent' && commandResult._artifact) {
+                commandResult._guid = 'Download@' + uuidv4();
+                commandResult._type = 'Download';
+            }
+            // XXX I think you are starting to see a pattern here
+            if (commandResult && commandResult._initializer && commandResult._initializer.fetchUid) {
+                commandResult._guid = 'FetchResponse@' + uuidv4();
+                commandResult._type = 'FetchResponse';
             }
 
-            if (res && res._guid) {
-                objects[res._guid] = res;
+            if (commandResult && commandResult._guid) {
+                objects[commandResult._guid] = commandResult;
             }
         } catch (e) {
             result = { error : true, message : e.message };

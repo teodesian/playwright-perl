@@ -71,7 +71,7 @@ our %bogus_methods = (
 );
 
 # Playwright methods we can't actually have work here
-our @banned = ('_request');
+our @banned = ('_api_request');
 
 my @modules;
 foreach my $class ( keys(%$spec), 'Mouse', 'Keyboard' ) {
@@ -102,7 +102,7 @@ See L<https://playwright.dev/api/class-$class#$class-$method> for more informati
 
 sub $renamed {
     my \$self = shift;
-    return \$self->_request(
+    return \$self->_api_request(
         args    => [\@_],
         command => '$method',
         object  => \$self->{guid},
