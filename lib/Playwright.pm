@@ -337,6 +337,28 @@ This yet again can be handled when instantiating the various playwright objects.
 
 L<Test::Class> and it's many variants cover the subject well.
 
+=head1 USING PLAYWRIGHT EXTENSIONS
+
+At the time of writing, I know of two extensions to playwright:
+
+ReCaptcha: L<https://www.npmjs.com/package/@extra/recaptcha>
+Humanize:  L<https://www.npmjs.com/package/@extra/humanize>
+
+In the future, I imagine there will be more.
+So, we support executing arbitrary code blocks to load up and configure these extensions during playwright_server's startup.
+Each extra plugin ought to be written as a L<Playwright::Extra> subclass.
+
+Both of the two known extensions above have Playwright::Extra subclasses implemented with this distribution.
+Feel free to contribute more using them as an example.
+
+Be aware that plugins may radically alter behavior and even be mutually exclusive.
+
+=head1 SECURITY
+
+This runs a playwright_server node service on a random port in the upper ranges.
+Exposing any port running this to the outside world would be a very bad idea.
+Doing so while loading playwright extensions is a doubly bad idea, as it's explicitly an RCE waiting to happen.
+
 =head1 INSTALLATION NOTE
 
 If you install this module from CPAN, you will likely encounter a croak() telling you to install node module dependencies.
@@ -445,6 +467,8 @@ sub new ( $class, %options ) {
     return $self;
 }
 
+our $EXTRAS = [];
+
 sub _check_and_build_spec ($self) {
     return $spec if ref $spec eq 'HASH';
 
@@ -475,6 +499,7 @@ sub launch ( $self, %args ) {
         command => 'launch'
     );
     delete $args{command};
+    $args{setup_callbacks} = $EXTRAS if @$EXTRAS;
 
     my $msg = Playwright::Util::request(
         'POST', 'session', $self->{port}, $self->{ua},
@@ -652,6 +677,8 @@ sub _start_server ( $port, $timeout, $debug, $cleanup ) {
 
         return $pid;
     }
+    # Don't attempt plugins unless we have loaded, as they're an RCE when fw not present
+    my $plugin = @$EXTRAS ? '--plugins' : '';
 
     # Orphan the process in the event that cleanup => 0
     if (!$cleanup) {
@@ -660,10 +687,10 @@ sub _start_server ( $port, $timeout, $debug, $cleanup ) {
         require POSIX;
         die "Cannot detach playwright_server process for persistence" if POSIX::setsid() < 0;
         require Capture::Tiny;
-        capture_merged { exec( $node_bin, $server_bin, "--port", $port, $debug ) };
+        capture_merged { exec( $node_bin, $server_bin, "--port", $port, $debug, $plugin ) };
         die("Could not exec!");
     }
-    exec( $node_bin, $server_bin, "--port", $port, $debug );
+    exec( $node_bin, $server_bin, "--port", $port, $debug, $plugin );
 }
 
 1;

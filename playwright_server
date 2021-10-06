@@ -82,13 +82,17 @@ var debug = false;
 if ( args.filter(arg => arg == '--debug').length > 0 ) {
     debug = true;
 }
-
 var got_port = 6969;
 if ( args.filter(arg => arg == '--port').length > 0 ) {
     var pos = args.indexOf('--port') + 1;
     if (pos != 0) {
         got_port = args[pos];
     }
+}
+
+var do_plugin = false;
+if ( args.filter(arg => arg == '--plugins').length > 0 ) {
+    do_plugin = true;
 }
 
 const app = express();
@@ -114,6 +118,19 @@ app.post('/session', async (req, res) => {
     if (debug) {
         console.log("Got launch arguments:");
         console.log(args);
+    }
+
+    // With great power comes great responsibility
+    if (do_plugin && args[0].setup_callbacks) {
+        if (debug) {
+            console.log('loading plugins');
+        }
+        var callbacks = args[0].setup_callbacks;
+        delete args[0].setup_callbacks;
+        for (var callback of callbacks) {
+            console.log(callback);
+            eval(callback);
+        }
     }
 
     var result;
