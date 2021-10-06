@@ -20,11 +20,11 @@ use feature qw{signatures};
 Base class for each Playwright class magic'd up by Sub::Install in Playwright's BEGIN block.
 You probably shouldn't use this.
 
-The specification for each class can be inspected with the 'spec' property:
+The specification for each class can be inspected with the 'spec' method:
 
     use Data::Dumper;
     my $object = Playwright::Base->new(...);
-    print Dumper($object->{spec});
+    print Dumper($object->spec());
 
 =head1 CONSTRUCTOR
 
@@ -45,7 +45,6 @@ sub new ( $class, %options ) {
 
     my $self = bless(
         {
-            spec   => $Playwright::spec->{ $options{type} }{members},
             type   => $options{type},
             guid   => $options{id},
             ua     => $options{handle}{ua},
@@ -88,7 +87,7 @@ sub _coerce ( $spec, %args ) {
 
 sub _api_request ( $self, %args ) {
 
-    %args = Playwright::Base::_coerce( $self->{spec}, %args );
+    %args = Playwright::Base::_coerce( $self->spec(), %args );
 
     return Playwright::Util::async( sub { &Playwright::Base::_do( $self, %args ) } )
       if $args{command} =~ m/^waitFor/;

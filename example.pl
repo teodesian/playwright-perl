@@ -2,9 +2,7 @@ use strict;
 use warnings;
 
 use Data::Dumper;
-
 use Playwright;
-
 use Try::Tiny;
 
 my $handle = Playwright->new( debug => 1 );
@@ -16,6 +14,9 @@ print "Browser PID: ".$process->{pid}."\n";
 
 # Open a tab therein
 my $page = $browser->newPage({ videosPath => 'video', acceptDownloads => 1 });
+
+# Test the spec method
+print Dumper($page->spec(),$page);
 
 # Browser contexts don't exist until you open at least one page.
 # You'll need this to grab and set cookies.

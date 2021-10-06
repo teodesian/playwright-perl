@@ -177,6 +177,10 @@ sub new {
 
 =cut
 
+sub spec {
+    return $Playwright::spec->{'%CLASSNAME%'}{members};
+}
+
 %SUBROUTINES%
 
 1;
