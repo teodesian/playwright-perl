@@ -640,7 +640,7 @@ sub DESTROY ($self) {
 }
 
 sub _start_server ( $port, $timeout, $debug, $cleanup ) {
-    $debug = $debug ? '-d' : '';
+    $debug = $debug ? '--debug' : '';
 
     $ENV{DEBUG} = 'pw:api' if $debug;
     my $pid = fork // confess("Could not fork");
