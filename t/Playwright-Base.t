@@ -41,13 +41,13 @@ no warnings qw{redefine once};
 local *Playwright::Fake::new = sub {
     my ($class,%options) = @_;
     return bless( {
-        spec => $Playwright::spec->{$options{type}}{members},
         type => $options{type},
         guid => $options{id},
         ua   => $options{handle}{ua},
         port => $options{handle}{port},
     }, $class);
 };
+local *Playwright::Fake::spec = sub { return $Playwright::spec->{Fake}{members} };
 use warnings;
 
 my $obj = CLASS()->new(
@@ -55,8 +55,7 @@ my $obj = CLASS()->new(
     id   => 666,
     handle => { ua => 'bogus', port => 420 },
 );
-
-is($obj->{spec}, $Playwright::spec->{Fake}{members}, "Spec correctly filed by constructor");
+is($obj->spec, $Playwright::spec, "Spec correctly filed by constructor");
 
 my %in = (
     command => 'tickle',
@@ -70,7 +69,7 @@ my %expected = (
     args    => [{ intense => JSON::true, tickler => 'bigtime' }, JSON::false, 'boom'],
 );
 
-my %out = Playwright::Base::_coerce($obj->{spec}, %in);
+my %out = Playwright::Base::_coerce($obj->spec->{Fake}{members}, %in);
 
 is(\%out, \%expected, "_coerce correctly transforms bools and leaves everything else alone");
 

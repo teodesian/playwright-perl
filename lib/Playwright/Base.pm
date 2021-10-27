@@ -116,4 +116,8 @@ sub _do ( $self, %args ) {
         $self->{ua}, %args );
 }
 
+sub spec {
+    return $Playwright::spec;
+}
+
 1;
