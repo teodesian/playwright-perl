@@ -141,9 +141,9 @@ $element = Playwright::try_until($page, 'select', 'bogus-bogus-nothere');
 $elapsed = time() - $checkpoint;
 print "Waited $elapsed seconds for timeout to drop\n";
 
-# Try out the "experimental" API testing extensions (FetchRequests)
+# Try out the API testing extensions
 print "HEAD http://google.com : \n";
-my $fr = $page->request();
+my $fr = $page->request;
 my $resp = $fr->fetch("http://google.com", { method => "HEAD" });
 print Dumper($resp->headers());
 print "200 OK\n" if $resp->status() == 200;

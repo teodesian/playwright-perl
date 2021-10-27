@@ -190,13 +190,12 @@ app.post('/command', async (req, res) => {
                 ];
             }
             var commandResult;
-            if (command == '_request') {
+            if (command == 'request') {
                 //TODO extend this to other attribute fetches as well in the future
                 commandResult = subject[command];
             } else {
                 commandResult = await subject[command](...args);
             }
-            result = { error : false, message : commandResult };
 
             if (Array.isArray(commandResult)) {
                 for (var r of commandResult) {
@@ -225,9 +224,26 @@ app.post('/command', async (req, res) => {
                 commandResult._type = 'FetchResponse';
             }
 
+            var toReturn = commandResult;
+            // XXX we have to duplicate this parameter so as not to confuse playwright when we change it to reflect the spec
+            if (commandResult && commandResult._type) {
+                toReturn = { _guid : commandResult._guid, _type : commandResult._type };
+            }
+
+            // XXX APIRequestContexts & friends are still internally FetchRequests
+            if (commandResult && commandResult._type == 'FetchRequest') {
+                toReturn._type = 'APIRequestContext';
+            }
+            if (commandResult && commandResult._type == 'FetchResponse') {
+                toReturn._type = 'APIResponse';
+            }
+
             if (commandResult && commandResult._guid) {
                 objects[commandResult._guid] = commandResult;
             }
+
+            result = { error : false, message : toReturn };
+
         } catch (e) {
             result = { error : true, message : e.message };
         }
