@@ -315,7 +315,7 @@ Look into L<Test::Class::Moose>'s Parallel runmode, C<prove>'s -j option, or L<T
 
 =head3 Reporters
 
-When using C<prove>, consider L<Test::Reporter> coupled with L<App::Prove::Plugin>s using custom L<TAP::Formatter>s.
+When using C<prove>, consider L<Test::Reporter> coupled with App::Prove::Plugins using custom TAP::Formatters.
 Test2 as of this writing (October 2012) supports formatters and plugins, but no formatter plugins have been uploaded to CPAN.
 See L<Test2::Manual::Tooling::Formatter> on writing a formatter yourself, and then a L<Test2::Plugin> using it.
 
