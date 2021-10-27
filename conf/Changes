@@ -1,5 +1,9 @@
 Revision history for Playwright
 
+0.017 2021-10-10 TEODESIAN
+    - Adjust to handle _request() becoming request()
+    - Document perl equivalents for playwright-test
+
 0.016 2021-09-16 TEODESIAN
     - Prevent deep recursion due to playwright using the _request name for methods too
     - Actually support getting FetchRequest objects via the _request() method
