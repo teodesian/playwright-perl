@@ -235,13 +235,13 @@ When you either want to test APIs (or not look like a scraper/crawler) you'll wa
 Here's how you go about that:
 
     print "HEAD http://google.com : \n";
-    my $fr = $page->_request();
+    my $fr = $page->request();
     my $resp = $fr->fetch("http://google.com", { method => "HEAD" });
     print Dumper($resp->headers());
     print "200 OK\n" if $resp->status() == 200;
 
-The _request() method will give you a Playwright::FetchRequest object, which you can then call whichever methods you like upon.
-When you call fetch (or get, post, etc) you will then be returned a Playwright::FetchResponse object.
+The request() method will give you a Playwright::APIRequestContext object, which you can then call whichever methods you like upon.
+When you call fetch (or get, post, etc) you will then be returned a Playwright::APIResponse object.
 
 =head3 Differences in behavior from Selenium::Remote::Driver
 
