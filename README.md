@@ -68,3 +68,5 @@ To make life simple, you can just run `run_example` in the TLD when debugging.
 Hop into the playwright slack, and check out the #playwright-perl channel therein.
 I'm watching that space and should be able to answer your questions.
 https://aka.ms/playwright-slack
+
+Apparently Microsoft is trying to migrate to Github's built in forums, so I've activated discussions on this project too (see the tab at the top).
