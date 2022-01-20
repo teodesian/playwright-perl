@@ -1,5 +1,8 @@
 Revision history for Playwright
 
+0.018 2022-01-20 TEODESIAN
+    - Update for playwright v1.18
+
 0.017 2021-10-10 TEODESIAN
     - Adjust to handle _request() becoming request()
     - Document perl equivalents for playwright-test

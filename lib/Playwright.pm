@@ -79,6 +79,20 @@ It should provide you with instructions which will get you working right away.
 However, depending on your node installation this may not work due to dependencies for node.js not being in the expected location.
 To fix this, you will need to update your NODE_PATH environment variable to point to the correct location.
 
+=head3 Node Versions
+
+playwright itself tends to need the latest version of node to work properly.
+It is recommended that you use nvm to get a hold of this:
+
+L<https://github.com/nvm-sh/nvm>
+
+If you cloned the playwright-perl repository, you can do the following to get things going:
+
+    wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash
+    source ~/.bashrc
+    nvm install
+    nvm use
+
 =head2 Questions?
 
 Feel free to join the Playwright slack server, as there is a dedicated #playwright-perl channel which I, the module author, await your requests in.
