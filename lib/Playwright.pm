@@ -86,12 +86,10 @@ It is recommended that you use nvm to get a hold of this:
 
 L<https://github.com/nvm-sh/nvm>
 
-If you cloned the playwright-perl repository, you can do the following to get things going:
+From there it's recommended you use the latest version of node:
 
-    wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash
-    source ~/.bashrc
-    nvm install
-    nvm use
+    nvm install node
+    nvm use node
 
 =head2 Questions?
 

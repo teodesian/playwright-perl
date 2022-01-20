@@ -46,6 +46,13 @@ dzil authordeps --missing | sudo cpanm
 dzil listdeps --missing | sudo cpanm
 ```
 
+From there you'll need nvm to get the latest verison of node working:
+
+    wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash
+    source ~/.bashrc
+    nvm install
+    nvm use
+
 Running dzil test should let you know if your kit is good to develop.
 
 Actually running stuff will look like this after you generate the API json and modules:
