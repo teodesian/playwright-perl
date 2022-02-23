@@ -1,5 +1,8 @@
 Revision history for Playwright
 
+0.019 2022-02-22 TEODESIAN
+    - Update for playwright v1.19
+
 0.018 2022-01-20 TEODESIAN
     - Update for playwright v1.18
 
