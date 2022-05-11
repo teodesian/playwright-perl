@@ -50,9 +50,9 @@ sub request ( $method, $url, $port, $ua, %args ) {
     return $msg;
 }
 
-sub arr2hash ($array,$primary_key) {
+sub arr2hash ($array,$primary_key,$callback='') {
     my $inside_out = {};
-    @$inside_out{map { $_->{$primary_key} } @$array} = @$array;
+    @$inside_out{map { $callback ? $callback->($_->{$primary_key}) : $_->{$primary_key} } @$array} = @$array;
     return $inside_out;
 }
 

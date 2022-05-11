@@ -21,6 +21,7 @@ while (<DATA>) {
 # Next, grab the API JSON and iterate to build classes.
 our $raw = File::Slurper::read_binary("$FindBin::Bin/api.json");
 our $spec = JSON::decode_json($raw);
+
 $spec = Playwright::Util::arr2hash($spec,'name');
 
 our %mapper = (
@@ -73,6 +74,11 @@ our %bogus_methods = (
 # Playwright methods we can't actually have work here
 our @banned = ('_api_request');
 
+my $ncallback = sub {
+    $_[0] =~ s/#.*$//;
+    return shift;
+};
+
 my @modules;
 foreach my $class ( keys(%$spec), 'Mouse', 'Keyboard' ) {
     next if $class eq 'Playwright';
@@ -81,7 +87,7 @@ foreach my $class ( keys(%$spec), 'Mouse', 'Keyboard' ) {
     push(@modules,$pkg);
     my @seen;
 
-    my $members = Playwright::Util::arr2hash($spec->{$class}{members},'name');
+    my $members = Playwright::Util::arr2hash($spec->{$class}{members},'name', $ncallback);
     foreach my $method ( ( keys( %$members ), 'on', 'evaluate', 'evaluateHandle' ) ) {
         next if grep { $_ eq $method } @banned;
         my $renamed = $method;
