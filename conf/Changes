@@ -1,5 +1,9 @@
 Revision history for Playwright
 
+1.250 2022-08-14 TEODESIAN
+    - Update for playwright v1.25
+    - Added ability to pass --port to spawn OR use existing pw server on provided port.
+
 1.210 2022-05-11 TEODESIAN
     - Update for playwright v1.21
     - Changed versioning to match the version of playwright it's tested against

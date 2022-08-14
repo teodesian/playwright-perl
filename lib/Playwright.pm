@@ -91,11 +91,6 @@ From there it's recommended you use the latest version of node:
     nvm install node
     nvm use node
 
-=head2 Questions?
-
-Feel free to join the Playwright slack server, as there is a dedicated #playwright-perl channel which I, the module author, await your requests in.
-L<https://aka.ms/playwright-slack>
-
 =head2 Documentation for Playwright Subclasses
 
 The documentation and names for the subclasses of Playwright follow the spec strictly:
@@ -211,6 +206,12 @@ Passing the cleanup => 0 parameter to new() will prevent DESTROY() from cleaning
 Be aware that this will prevent debug => 1 from printing extra messages from playwright_server itself, as we redirect the output streams in this case so as not to fill your current session with prints later.
 
 A convenience script has been provided to clean up these orphaned instances, `reap_playwright_servers` which will kill all extant `playwright_server` processes.
+
+=head2 Running multiple clients against the same playwright server
+
+To save on memory, this is a good idea.  Pass the 'port' argument to the constructor, and we'll re-use anything listening on that port locally, and be sure to use it when starting up.
+
+This will also set the cleanup flag to false, so be sure you run `reap_playwright_servers` when you are sure that all testing on this server is done.
 
 =head2 Taking videos, Making Downloads
 
@@ -436,14 +437,14 @@ sub BEGIN {
 sub new ( $class, %options ) {
 
     #XXX yes, this is a race, so we need retries in _start_server
-    my $port = Net::EmptyPort::empty_port();
+    my $port = $options{port} // Net::EmptyPort::empty_port();
     my $timeout = $options{timeout} // 30;
     my $self = bless(
         {
             ua      => $options{ua} // LWP::UserAgent->new(),
             port    => $port,
             debug   => $options{debug},
-            cleanup => $options{cleanup} // 1,
+            cleanup => ( $options{cleanup} || !$options{port} ) // 1,
             pid     => _start_server( $port, $timeout, $options{debug}, $options{cleanup} // 1 ),
             parent  => $$,
             timeout => $timeout,
@@ -615,7 +616,7 @@ sub quit ($self) {
 
     # Prevent destructor from firing in child processes so we can do things like async()
     # This should also prevent the waitpid below from deadlocking due to two processes waiting on the same pid.
-    return unless $$ == $self->{parent};
+    return unless $$ == $self->{parent} // 'bogus';
 
     # Prevent destructor from firing in the event the caller instructs it to not fire
     return unless $self->{cleanup};
@@ -625,6 +626,7 @@ sub quit ($self) {
 
     $self->{killed} = 1;
     print "Attempting to terminate server process...\n" if $self->{debug};
+
     Playwright::Util::request( 'GET', 'shutdown', $self->{port}, $self->{ua} );
 
     # 0 is always WCONTINUED, 1 is always WNOHANG, and POSIX is an expensive import
@@ -654,10 +656,16 @@ sub DESTROY ($self) {
 sub _start_server ( $port, $timeout, $debug, $cleanup ) {
     $debug = $debug ? '--debug' : '';
 
+    # Check if the port is already live, and short-circuit if this is the case.
+    if ( Net::EmptyPort::wait_port( $port, 1 ) ) {
+        print "Re-using playwright server on port $port...\n" if $debug;
+        return;
+    }
+
     $ENV{DEBUG} = 'pw:api' if $debug;
     my $pid = fork // confess("Could not fork");
     if ($pid) {
-        print "Waiting for port to come up...\n" if $debug;
+        print "Waiting for playwright server on port $port to come up...\n" if $debug;
         Net::EmptyPort::wait_port( $port, $timeout )
           or confess("Server never came up after 30s!");
         print "done\n" if $debug;

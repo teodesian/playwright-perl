@@ -13,7 +13,7 @@ A little node webserver written in [express][xp] is spun up which exposes the en
 We ensure the node deps are installed in a BEGIN block, and then spin up the proxy server.
 You then use playwright more or less as normal; see the POD in Playwright.pm for more details.
 
-See example.pl for usage examples.
+See [example.pl](https://github.com/teodesian/playwright-perl/blob/main/example.pl) in the toplevel of this project on gitHub for usage examples.
 
 [pw]:https://github.com/microsoft/playwright
 [srd]:https://metacpan.org/pod/Selenium::Remote::Driver

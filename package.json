@@ -6,7 +6,7 @@
   "private": true,
   "dependencies": {
     "express": "^4.17",
-    "playwright": "^1.21.1",
+    "playwright": "^1.25.0",
     "uuid": "^8.3"
   }
 }
