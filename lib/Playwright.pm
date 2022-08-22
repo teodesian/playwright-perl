@@ -446,7 +446,7 @@ sub new ( $class, %options ) {
             debug   => $options{debug},
             cleanup => ( $options{cleanup} || !$options{port} ) // 1,
             pid     => _start_server( $port, $timeout, $options{debug}, $options{cleanup} // 1 ),
-            parent  => $$,
+            parent  => $$ // 'bogus', # Oh lawds, this can be undef sometimes
             timeout => $timeout,
         },
         $class
@@ -616,7 +616,8 @@ sub quit ($self) {
 
     # Prevent destructor from firing in child processes so we can do things like async()
     # This should also prevent the waitpid below from deadlocking due to two processes waiting on the same pid.
-    return unless $$ == $self->{parent} // 'bogus';
+    my $ppid = $$ // 'hokum'; # If $$ is undef both here and in the parent, let's just keep going
+    return unless $ppid == $self->{parent};
 
     # Prevent destructor from firing in the event the caller instructs it to not fire
     return unless $self->{cleanup};
@@ -659,7 +660,8 @@ sub _start_server ( $port, $timeout, $debug, $cleanup ) {
     # Check if the port is already live, and short-circuit if this is the case.
     if ( Net::EmptyPort::wait_port( $port, 1 ) ) {
         print "Re-using playwright server on port $port...\n" if $debug;
-        return;
+        # Set the PID as something bogus, we don't really care as we won't kill it
+        return "REUSE";
     }
 
     $ENV{DEBUG} = 'pw:api' if $debug;
