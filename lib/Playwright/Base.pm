@@ -49,6 +49,7 @@ sub new ( $class, %options ) {
             guid   => $options{id},
             ua     => $options{handle}{ua},
             port   => $options{handle}{port},
+            host   => $options{handle}{host},
             parent => $options{parent},
         },
         $class
@@ -112,7 +113,7 @@ sub _api_request ( $self, %args ) {
 }
 
 sub _do ( $self, %args ) {
-    return Playwright::Util::request( 'POST', 'command', $self->{port},
+    return Playwright::Util::request( 'POST', 'command', $self->{host}, $self->{port},
         $self->{ua}, %args );
 }
 

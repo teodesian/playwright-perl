@@ -15,11 +15,11 @@ local *BogusResponse::decoded_content = sub {
 };
 use warnings;
 
-like( dies { Playwright::Util::request('tickle','chase',666, LWP::UserAgent->new(), a => 'b' ) }, qr/waa/i, "Bad response from server = BOOM");
+like( dies { Playwright::Util::request('tickle','chase', 'localhost', 666, LWP::UserAgent->new(), a => 'b' ) }, qr/waa/i, "Bad response from server = BOOM");
 
 $json = '{ "error":false, "message": { "_type":"Bogus", "_guid":"abc123" } }';
 
-is(Playwright::Util::request('tickle','chase',666, LWP::UserAgent->new(), a => 'b' ), { _type => 'Bogus', _guid => 'abc123' }, "Good response from server decoded and returned");
+is(Playwright::Util::request('tickle','chase', 'localhost', 666, LWP::UserAgent->new(), a => 'b' ), { _type => 'Bogus', _guid => 'abc123' }, "Good response from server decoded and returned");
 
 #Not testing async/await, mocking forks is bogus
 

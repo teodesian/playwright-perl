@@ -1,5 +1,9 @@
 Revision history for Playwright
 
+1.291 2022-12-28 TEODESIAN
+    - Add 'port' mechanism to connect to remote instances of playwright_server
+    - Add systemd service files for running things in user mode.  See service/Readme.md
+
 1.251 2022-08-21 TEODESIAN
     - Fix some undef value warnings in odd situations when using the --port option.
 

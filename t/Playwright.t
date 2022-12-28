@@ -83,6 +83,7 @@ subtest "new" => sub {
         parent => $$,
         pid    => 666,
         port   => 420,
+        host   => 'localhost',
         timeout => 5,
         cleanup => 1,
     }, 'Playwright');
@@ -95,6 +96,7 @@ subtest "new" => sub {
         parent => $$,
         pid    => 666,
         port   => 420,
+        host   => 'localhost',
         timeout => 30,
         cleanup => 1,
     }, 'Playwright');

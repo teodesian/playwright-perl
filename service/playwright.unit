@@ -1,0 +1,10 @@
+[Unit]
+Description=playwright
+
+[Install]
+WantedBy=default.target
+
+[Service]
+ExecStart=__REPLACEME__/../bin/playwright_server -p __PORT__
+ExecReload=/usr/bin/env kill -s HUP $MAINPID
+WorkingDirectory=__REPLACEME__/

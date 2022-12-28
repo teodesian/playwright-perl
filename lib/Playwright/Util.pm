@@ -17,14 +17,14 @@ use POSIX();
 no warnings 'experimental';
 use feature qw{signatures};
 
-=head2 request(STRING method, STRING url, INTEGER port, LWP::UserAgent ua, HASH args) = HASH
+=head2 request(STRING method, STRING url, STRING host, INTEGER port, LWP::UserAgent ua, HASH args) = HASH
 
 De-duplicates request logic in the Playwright Modules.
 
 =cut
 
-sub request ( $method, $url, $port, $ua, %args ) {
-    my $fullurl = "http://localhost:$port/$url";
+sub request ( $method,$url, $host, $port, $ua, %args ) {
+    my $fullurl = "http://$host:$port/$url";
 
     # Handle passing Playwright elements as arguments
     if (ref $args{args} eq 'ARRAY') {
