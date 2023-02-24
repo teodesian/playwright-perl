@@ -102,7 +102,7 @@ foreach my $class ( keys(%$spec), 'Mouse', 'Keyboard' ) {
 
 Execute the $class\:\:$renamed playwright routine.
 
-See L<https://playwright.dev/api/class-$class#$class-$method> for more information.
+See L<https://playwright.dev/docs/api/class-$class#$class-$method> for more information.
 
 =cut
 
