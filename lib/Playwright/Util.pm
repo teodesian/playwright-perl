@@ -59,10 +59,10 @@ sub arr2hash ($array,$primary_key,$callback='') {
 # Serialize a subprocess because NOTHING ON CPAN DOES THIS GRRRRR
 sub async ($subroutine) {
     # The fork would result in the tmpdir getting whacked when it terminates.
-    my (undef, $filename) = File::Temp::tempfile();
+    my $fh = File::Temp->new();
     my $pid = fork() // die "Could not fork";
-    _child($filename, $subroutine) unless $pid;
-    return { pid => $pid, file => $filename };
+    _child($fh->filename, $subroutine) unless $pid;
+    return { pid => $pid, file => $fh };
 }
 
 sub _child ($filename,$subroutine) {
@@ -73,8 +73,8 @@ sub _child ($filename,$subroutine) {
 
 sub await ($to_wait) {
     waitpid($to_wait->{pid},0);
-    confess("Timed out while waiting for event.") unless -f $to_wait->{file} && -s _;
-    return Sereal::Decoder->decode_from_file($to_wait->{file});
+    confess("Timed out while waiting for event.") unless -f $to_wait->{file}->filename && -s _;
+    return Sereal::Decoder->decode_from_file($to_wait->{file}->filename);
 }
 
 1;
