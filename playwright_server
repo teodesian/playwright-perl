@@ -203,8 +203,6 @@ app.post('/command', async (req, res) => {
                 }
             }
 
-            console.log("COMMAND RESULT:", commandResult);
-
             // XXX videos are special, we have to magic up a guid etc for them
             if (command == 'video' && commandResult) {
                 commandResult._guid = 'Video@' + uuidv4();
@@ -225,7 +223,7 @@ app.post('/command', async (req, res) => {
                 commandResult._guid = 'FetchResponse@' + uuidv4();
                 commandResult._type = 'FetchResponse';
             }
-            if (commandResult && type == 'Page' && command == 'locator') {
+            if (commandResult && spec[type].members[command].type.name == 'Locator') {
                 commandResult._guid = 'Locator@' + uuidv4();
                 commandResult._type = 'Locator';
             }
