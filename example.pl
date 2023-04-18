@@ -149,6 +149,11 @@ use Try::Tiny;
     print Dumper($resp->headers());
     print "200 OK\n" if $resp->status() == 200;
 
+    # Test that we can do stuff with with the new locator API.
+    my $loc = $page->locator('body');
+    my $innerTubes = $loc->allInnerTexts();
+    print Dumper($innerTubes);
+
     # Save a video now that we are done
     my $bideo = $page->video;
 

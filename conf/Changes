@@ -1,5 +1,9 @@
 Revision history for Playwright
 
+1.323 2023-04-17 TEODESIAN
+    - Ensure temporary files used for IPC by await() are cleaned out of /tmp.  Patch courtesy of Yanick Champoux.
+    - Add experimental support for the locator API via Page->locator().
+
 1.291 2022-12-28 TEODESIAN
     - Add 'port' mechanism to connect to remote instances of playwright_server
     - Add systemd service files for running things in user mode.  See service/Readme.md
