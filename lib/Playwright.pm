@@ -48,6 +48,13 @@ use feature qw{signatures};
 
     my $kids = $body->selectMulti('*');
 
+    #Alternatively, use the new locator API instead of select/selectMulti:
+    my $loc = $page->locator('body');
+    my $innerTubes = $loc->allInnerTexts();
+    print Dumper($innerTubes);
+
+    # See a more full exploration of the API in example.pl on github.
+
 =head1 DESCRIPTION
 
 Perl interface to a lightweight node.js webserver that proxies commands runnable by Playwright.
