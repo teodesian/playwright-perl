@@ -153,6 +153,8 @@ use Try::Tiny;
     my $loc = $page->locator('body');
     my $innerTubes = $loc->allInnerTexts();
     print Dumper($innerTubes);
+    my $image = $page->getByAltText('picture');
+    print Dumper($image);
 
     # Save a video now that we are done
     my $bideo = $page->video;
