@@ -50,8 +50,8 @@ From there you'll need nvm to get the latest verison of node working:
 
     wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash
     source ~/.bashrc
-    nvm install
-    nvm use
+    nvm install node
+    nvm use node
 
 Running dzil test should let you know if your kit is good to develop.
 

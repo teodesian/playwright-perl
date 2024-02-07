@@ -218,6 +218,11 @@ app.post('/command', async (req, res) => {
                 commandResult._guid = 'Download@' + uuidv4();
                 commandResult._type = 'Download';
             }
+            // XXX Console logs too
+            if (command == 'waitForEvent' && commandResult._event && commandResult._event.type == 'log') {
+                commandResult._guid = 'ConsoleMessage@' + uuidv4();
+                commandResult._type = 'ConsoleMessage';
+            }
             // XXX I think you are starting to see a pattern here
             if (commandResult && commandResult._initializer && commandResult._initializer.fetchUid) {
                 commandResult._guid = 'FetchResponse@' + uuidv4();
