@@ -4,8 +4,10 @@ use warnings;
 use Data::Dumper;
 use Playwright;
 use Try::Tiny;
+use Net::EmptyPort;
+use Carp::Always;
 
-{
+NORMAL: {
     my $handle = Playwright->new( debug => 1 );
 
     # Open a new chrome instance
@@ -165,7 +167,7 @@ use Try::Tiny;
 }
 
 # Example of using persistent mode / remote hosts
-{
+OPEN: {
     my $handle  = Playwright->new( debug => 1 );
     my $handle2 = Playwright->new( debug => 1, host => 'localhost', port => $handle->{port} );
 
@@ -173,6 +175,59 @@ use Try::Tiny;
     my $process = $handle2->server( browser => $browser, command => 'process' );
     print "Browser PID: ".$process->{pid}."\n";
 
+}
+
+# Example of connecting to remote CDP sessions
+CDP: {
+    local $SIG{HUP} = 'IGNORE';
+
+    sub kill_krom_and_die {
+        my ($in, $msg) = @_;
+        kill_krom($in);
+        die $msg;
+    }
+
+    sub kill_krom {
+        my ($in) = @_;
+        kill HUP => -getpgrp();
+        close $in;
+    }
+
+    my $port = Net::EmptyPort::empty_port();
+
+    my $pid = fork // die("Could not fork");
+    if (!$pid) {
+        open(my $stdin, '|-', qq{chromium-browser --remote-debugging-port=$port --headless}) or die "Could not open chromium-browser to test!";
+        print "Waiting for cdp server on port $port to come up...\n";
+        Net::EmptyPort::wait_port( $port, 10 )
+          or kill_krom_and_die($stdin, "Server never came up after 10s!");
+        print "done\n";
+
+        my $handle = Playwright->new( debug => 1, cdp_uri => "http://127.0.0.1:$port" );
+
+        # Open a new chrome instance
+        my $browser = $handle->launch( headless => 1, type => 'chrome' );
+
+        # Open a tab therein
+        my $page = $browser->newPage({ videosPath => 'video', acceptDownloads => 1 });
+
+        # Load a URL in the tab
+        my $res = $page->goto('http://troglodyne.net', { waitUntil => 'networkidle' });
+        print Dumper($res->status(), $browser->version());
+
+        $handle->quit();
+
+        #XXX OF COURSE chrome responds correctly to ESPIPE and SIGCHLD, why wouldn't it
+        kill_krom($stdin);
+        exit 0;
+    } else {
+        # If it can't get done in 20s, it ain't getting done
+        foreach (0..20) {
+            last unless waitpid( $pid, 1) == 0;
+            sleep 1;
+        }
+    }
+    print "All Done!\n\n";
 }
 
 # Clean up, since we left survivors

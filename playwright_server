@@ -69,7 +69,7 @@ if (fix_it) {
 var args = process.argv.slice(2);
 
 if ( args.filter(arg => arg == '--help' || arg == '-h' || arg == '-?' ).length > 0 ) {
-    console.log("Usage:\nplaywright_server [--debug | --check | --port PORT | --help]");
+    console.log("Usage:\nplaywright_server [--debug | --check | --port PORT | --cdp URI --help]");
     exit(0);
 }
 
@@ -88,6 +88,14 @@ if ( args.filter(arg => arg == '--port').length > 0 ) {
     var pos = args.indexOf('--port') + 1;
     if (pos != 0) {
         got_port = args[pos];
+    }
+}
+
+var cdp_uri = '';
+if ( args.filter(arg => arg == '--cdp').length > 0 ) {
+    var pos = args.indexOf('--cdp') + 1;
+    if (pos !=0) {
+        cdp_uri = args[pos];
     }
 }
 
@@ -121,7 +129,12 @@ app.post('/session', async (req, res) => {
         try {
             var browserServer = await browsers[type].launchServer(...args);
             var wsEndpoint = browserServer.wsEndpoint();
-            var browser = await browsers[type].connect({ wsEndpoint });
+            var browser;
+            if (cdp_uri == '') {
+                browser = await browsers[type].connect({ wsEndpoint });
+            } else {
+                browser = await browsers[type].connectOverCDP( cdp_uri );
+            }
             browser.server = browserServer;
             objects[browser._guid] = browser;
             result = { error : false, message : browser };
