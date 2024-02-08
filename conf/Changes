@@ -1,5 +1,9 @@
 Revision history for Playwright
 
+1.401 2024-02-07 TEODESIAN
+    - Fix ConsoleMessages being broken due to returning out-of-spec data
+    - Add support for connecting to browserless.io playwright hosts
+
 1.324 2023-04-18 TEODESIAN
     - Ensure all PW methods returning Locator objects are correctly blessed
 
