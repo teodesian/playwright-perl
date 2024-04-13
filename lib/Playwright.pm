@@ -699,21 +699,26 @@ sub DESTROY ($self) {
     $self->quit();
 }
 
-sub _wait_port( $port ) {
+sub _wait_port( $port, $timeout, $debug ) {
     # Check if the port is already live, and short-circuit if this is the case.
     if (IS_WIN) {
-        sleep 5;
-        my $result = qx{netstat -na | findstr "$port"};
+        my $result;
+        for (0..$timeout) {
+            my $result = qx{netstat -na | findstr "$port"};
+            print "Waiting on port $port: $result\n" if $debug;
+            last if $result;
+            sleep 1;
+        }
         return !!$result;
     }
-    return Net::EmptyPort::wait_port( $port, 1 )
+    return Net::EmptyPort::wait_port( $port, $timeout )
 }
 
 sub _start_server ( $port, $cdp_uri, $timeout, $debug, $cleanup ) {
     $debug = $debug ? '--debug' : '';
 
     # Check if the port is already live, and short-circuit if this is the case.
-    if ( _wait_port( $port ) ) {
+    if ( _wait_port( $port, 1, $debug ) ) {
         print "Re-using playwright server on port $port...\n" if $debug;
         # Set the PID as something bogus, we don't really care as we won't kill it
         return "REUSE";
@@ -765,7 +770,7 @@ sub _start_server_windows ( $port, $timeout, $debug, $cleanup, @args) {
         my $cmdstring = join(' ', @cmdprefix, @args );
         print "$cmdstring\n" if $debug;
         system($cmdstring);
-        _wait_port( $port );
+        _wait_port( $port, $timeout, $debug );
         return $pid;
 }
 

@@ -7,6 +7,8 @@ use Try::Tiny;
 use Net::EmptyPort;
 use Carp::Always;
 
+use constant IS_WIN => $^O eq 'MSWin32';
+
 NORMAL: {
     my $handle = Playwright->new( debug => 1 );
 
@@ -177,6 +179,8 @@ OPEN: {
 
 }
 
+goto DONE if IS_WIN;
+
 # Example of connecting to remote CDP sessions
 CDP: {
     local $SIG{HUP} = 'IGNORE';
@@ -234,4 +238,6 @@ CDP: {
 # Clean up, since we left survivors
 require './bin/reap_playwright_servers';
 Playwright::ServerReaper::main();
+
+DONE:
 0;
