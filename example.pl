@@ -208,7 +208,7 @@ CDP: {
         print "done\n";
 
         #XXX not clear that this doesn't want an http uri instead? idk
-        my $handle = Playwright->new( debug => 1, cdp_uri => "ws://127.0.0.1:$port" );
+        my $handle = Playwright->new( debug => 1, cdp_uri => "http://127.0.0.1:$port" );
 
         # Open a new chrome instance
         my $browser = $handle->launch( headless => 1, type => 'chrome' );
