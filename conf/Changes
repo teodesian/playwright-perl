@@ -1,5 +1,8 @@
 Revision history for Playwright
 
+1.431 2024-04-13 TEODESIAN
+    - Add support for running this module on microsoft windows.  reap_playwright_servers is not currently supported.
+
 1.401 2024-02-07 TEODESIAN
     - Fix ConsoleMessages being broken due to returning out-of-spec data
     - Add support for connecting to browserless.io playwright hosts
