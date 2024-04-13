@@ -17,6 +17,8 @@ use POSIX();
 no warnings 'experimental';
 use feature qw{signatures};
 
+use constant IS_WIN => $^O eq 'MSWin32';
+
 =head2 request(STRING method, STRING url, STRING host, INTEGER port, LWP::UserAgent ua, HASH args) = HASH
 
 De-duplicates request logic in the Playwright Modules.
@@ -71,8 +73,9 @@ sub async ($subroutine) {
 
 sub _child ($filename,$subroutine) {
     Sereal::Encoder->encode_to_file($filename,$subroutine->());
-    # Prevent destructors from firing due to exiting instantly
-    POSIX::_exit(0);
+    # Prevent destructors from firing due to exiting instantly...unless we are on windows, where they won't.
+    POSIX::_exit(0) unless IS_WIN;
+    exit 0;
 }
 
 sub await ($to_wait) {

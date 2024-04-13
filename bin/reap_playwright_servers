@@ -9,9 +9,13 @@ use Proc::ProcessTable;
 use Playwright::Util;
 use LWP::UserAgent;
 
+use constant IS_WIN => $^O eq 'MSWin32';
+
 exit main() unless caller;
 
 sub main {
+    die "Reaping unsupported on Windows." if IS_WIN;
+
     my $t = Proc::ProcessTable->new;
     my @matches = grep { $_->cmndline =~ m/playwright_server --port/ } @{$t->table};
 
