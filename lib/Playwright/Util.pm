@@ -42,6 +42,10 @@ sub request ( $method,$url, $host, $port, $ua, %args ) {
     $request->content( JSON::MaybeXS::encode_json( \%args ) );
     my $response = $ua->request($request);
     my $content  = $response->decoded_content();
+
+    # If we get this kind of response the server failed to come up :(
+    die "playwright server failed to spawn!" if $content =~ m/^Can't connect to/;
+
     my $decoded  = JSON::MaybeXS::decode_json($content);
     my $msg      = $decoded->{message};
 
