@@ -7,6 +7,8 @@ use warnings;
 use 5.006;
 use v5.28.0;    # Before 5.006, v5.10.0 would not be understood.
 
+use constant IS_WIN => $^O eq 'MSWin32';
+
 use File::ShareDir();
 use File::Basename();
 use Cwd();
@@ -422,7 +424,12 @@ sub _check_node {
       unless $server_bin && -x $server_bin;
 
     # Attempt to start the server.  If we can't do this, we almost certainly have dependency issues.
-    my ($output) = capture_merged { system($node_bin, $server_bin, '--check') };
+    my $output = '';
+    if (IS_WIN) {
+        $output = 'OK';
+    } else {
+        ($output) = capture_merged { system($node_bin, $server_bin, '--check') };
+    }
     return if $output =~ m/OK/;
 
     warn $output if $output;
@@ -666,6 +673,8 @@ sub quit ($self) {
 
     Playwright::Util::request( 'GET', 'shutdown', $self->{host}, $self->{port}, $self->{ua} );
 
+    return $self->_kill_playwright_server_windows() if IS_WIN;
+
     # 0 is always WCONTINUED, 1 is always WNOHANG, and POSIX is an expensive import
     # When 0 is returned, the process is still active, so it needs more persuasion
     foreach (0..3) {
@@ -690,17 +699,32 @@ sub DESTROY ($self) {
     $self->quit();
 }
 
+sub _wait_port( $port ) {
+    # Check if the port is already live, and short-circuit if this is the case.
+    if (IS_WIN) {
+        sleep 5;
+        my $result = qx{netstat -na | findstr "$port"};
+        return !!$result;
+    }
+    return Net::EmptyPort::wait_port( $port, 1 )
+}
+
 sub _start_server ( $port, $cdp_uri, $timeout, $debug, $cleanup ) {
     $debug = $debug ? '--debug' : '';
 
     # Check if the port is already live, and short-circuit if this is the case.
-    if ( Net::EmptyPort::wait_port( $port, 1 ) ) {
+    if ( _wait_port( $port ) ) {
         print "Re-using playwright server on port $port...\n" if $debug;
         # Set the PID as something bogus, we don't really care as we won't kill it
         return "REUSE";
     }
 
+    my @args = ( qq{"$node_bin"}, qq{"$server_bin"}, "--port", $port );
+    push(@args, "--cdp", qq{"$cdp_uri"}) if $cdp_uri;
+    push(@args, $debug) if $debug;
+
     $ENV{DEBUG} = 'pw:api' if $debug;
+    return _start_server_windows( $port, $timeout, $debug, $cleanup, @args ) if IS_WIN;
     my $pid = fork // confess("Could not fork");
     if ($pid) {
         print "Waiting for playwright server on port $port to come up...\n" if $debug;
@@ -710,10 +734,6 @@ sub _start_server ( $port, $cdp_uri, $timeout, $debug, $cleanup ) {
 
         return $pid;
     }
-
-    my @args = ( $node_bin, $server_bin, "--port", $port );
-    push(@args, "--cdp", $cdp_uri) if $cdp_uri;
-    push(@args, $debug) if $debug;
 
     # Orphan the process in the event that cleanup => 0
     if (!$cleanup) {
@@ -726,6 +746,26 @@ sub _start_server ( $port, $cdp_uri, $timeout, $debug, $cleanup ) {
         die("Could not exec!");
     }
     exec( @args );
+}
+
+sub _start_server_windows ( $port, $timeout, $debug, $cleanup, @args) {
+        my $pid = qq/playwright-server:$port/;
+        my @cmdprefix = ("start /MIN", qq{"$pid"});
+
+        my $node_bin = File::Which::which('node');
+        my $server_bin = File::Which::which('playwright_server');
+        my $cmdstring = join(' ', @cmdprefix, @args );
+        print "$cmdstring\n" if $debug;
+        system($cmdstring);
+        _wait_port( $port );
+        return $pid;
+}
+
+sub _kill_playwright_server_windows ($self) {
+    my $killer = qq[taskkill /FI "WINDOWTITLE eq $self->{pid}"];
+    print "$killer\n" if $self->{debug};
+    system($killer);
+    return 1;
 }
 
 1;
