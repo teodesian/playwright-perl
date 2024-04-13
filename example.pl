@@ -203,7 +203,8 @@ CDP: {
           or kill_krom_and_die($stdin, "Server never came up after 10s!");
         print "done\n";
 
-        my $handle = Playwright->new( debug => 1, cdp_uri => "http://127.0.0.1:$port" );
+        #XXX not clear that this doesn't want an http uri instead? idk
+        my $handle = Playwright->new( debug => 1, cdp_uri => "ws://127.0.0.1:$port" );
 
         # Open a new chrome instance
         my $browser = $handle->launch( headless => 1, type => 'chrome' );

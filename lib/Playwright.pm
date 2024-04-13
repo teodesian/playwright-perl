@@ -719,7 +719,15 @@ sub _start_server ( $port, $cdp_uri, $timeout, $debug, $cleanup ) {
         return "REUSE";
     }
 
-    my @args = ( qq{"$node_bin"}, qq{"$server_bin"}, "--port", $port );
+    # On windows, the args will have to be handled slightly differently.
+    my @args;
+    if (IS_WIN) {
+        push(@args, qq{"$node_bin"}, qq{"$server_bin"});
+    } else {
+        push(@args, $node_bin, $server_bin);
+    }
+
+    push(@args, ( "--port", $port ));
     push(@args, "--cdp", qq{"$cdp_uri"}) if $cdp_uri;
     push(@args, $debug) if $debug;
 
