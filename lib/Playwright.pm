@@ -733,7 +733,7 @@ sub _start_server ( $port, $cdp_uri, $timeout, $debug, $cleanup ) {
     }
 
     push(@args, ( "--port", $port ));
-    push(@args, "--cdp", qq{"$cdp_uri"}) if $cdp_uri;
+    push(@args, "--cdp", $cdp_uri) if $cdp_uri;
     push(@args, $debug) if $debug;
 
     $ENV{DEBUG} = 'pw:api' if $debug;
