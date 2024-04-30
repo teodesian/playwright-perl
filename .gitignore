@@ -52,3 +52,5 @@ test.jpg
 test2.jpg
 video/*
 api.json
+
+bin/playwright_server.bat
