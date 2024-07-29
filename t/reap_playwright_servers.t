@@ -1,11 +1,6 @@
 use strict;
 use warnings;
 
-BEGIN {
-$ENV{PATH} .= ":./bin";
-}
-
-use lib 'blib/lib/';
 use Net::EmptyPort qw(empty_port);
 use Playwright;
 use Test2::V0;
@@ -20,7 +15,7 @@ my $browser2 = $handle2->launch( headless => 0, type => 'chrome' );
 is ($handle2->{ cleanup }, 0, "Cleanup option set correctly" );
 is ($handle2->{ port }, $port, "Port option set correctly" );
 
-my $result = `../bin/reap_playwright_servers`;
+my $result = `reap_playwright_servers`;
 like ($result, qr/Instructing playwright_server process \d+ listening on $handle->{ port } to shut down/, "Reaping first server" );
 like ($result, qr/Instructing playwright_server process \d+ listening on $handle2->{ port } to shut down/, "Reaping second server" );
 
