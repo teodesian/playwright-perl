@@ -26,8 +26,11 @@ sub main {
        my ($port) = $process->cmndline =~ m/playwright_server --port (\d+)/;
        next unless $port;
        print "Instructing playwright_server process ".$process->pid()." listening on $port to shut down...\n";
-       Playwright::Util::request( 'GET', 'shutdown', $port, $ua );
+       Playwright::Util::request( 'GET', 'shutdown', 'localhost', $port, $ua );
     }
+
+    # Make sure everything is shut down before returning
+    sleep 1 if (@matches);
 
     return 0;
 }

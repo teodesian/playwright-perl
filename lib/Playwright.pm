@@ -480,6 +480,7 @@ sub new ( $class, %options ) {
     my $port = $options{port} // Net::EmptyPort::empty_port();
     my $cdp_uri = $options{cdp_uri} // '';
     my $timeout = $options{timeout} // 30;
+    my $cleanup = ($options{cleanup} // !($options{ port } || $options{ host })) ? 1 : 0;
     my $self = bless(
         {
             ua      => $options{ua} // LWP::UserAgent->new(),
@@ -487,8 +488,8 @@ sub new ( $class, %options ) {
             port    => $port,
             cdp_uri => $cdp_uri,
             debug   => $options{debug},
-            cleanup => ( $options{cleanup} || !$options{port} || !$options{host} ) // 1,
-            pid     => $options{host} ? "REUSE" : _start_server( $port, $cdp_uri, $timeout, $options{debug}, $options{cleanup} // 1 ),
+            cleanup => $cleanup,
+            pid     => $options{host} ? "REUSE" : _start_server( $port, $cdp_uri, $timeout, $options{debug}, $cleanup ),
             parent  => $$ // 'bogus', # Oh lawds, this can be undef sometimes
             timeout => $timeout,
         },

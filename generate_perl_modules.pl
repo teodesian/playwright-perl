@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # The point of this is to build skeleton classes which are then fleshed out at runtime
 # so that people can wrap a mop around it
