@@ -1,6 +1,9 @@
 use strict;
 use warnings;
 
+BEGIN {
+  $ENV{PATH} = "./bin:$ENV{PATH}";
+}
 use Net::EmptyPort qw(empty_port);
 use Playwright;
 use Test2::V0;

@@ -752,7 +752,7 @@ sub _start_server ( $port, $cdp_uri, $timeout, $debug, $cleanup ) {
     # Orphan the process in the event that cleanup => 0
     if (!$cleanup) {
         print "Detaching child process...\n";
-        chdir '/';
+        #chdir '/';
         require POSIX;
         die "Cannot detach playwright_server process for persistence" if POSIX::setsid() < 0;
         require Capture::Tiny;
