@@ -2,8 +2,13 @@ use strict;
 use warnings;
 
 BEGIN {
+  unless ($ENV{AUTHOR_TESTING}) {
+    print qq{1..0 # SKIP these tests are for testing by the author\n};
+    exit;
+   }
   $ENV{PATH} = "./bin:$ENV{PATH}";
 }
+
 use Net::EmptyPort qw(empty_port);
 use Playwright;
 use Test2::V0;
