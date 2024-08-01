@@ -273,7 +273,7 @@ app.post('/command', async (req, res) => {
     } else if (command == 'on' && subject && spec[type].members.waitForEvent ) {
         try {
             var evt = args.shift();
-            const cb  = new Function (args.shift());
+            const cb  = new Function (...args);
             subject.on(evt,cb);
             result = { error : false, message : "Listener set up" };
         } catch (e) {
