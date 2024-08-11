@@ -8,6 +8,7 @@ use warnings;
 use Proc::ProcessTable;
 use Playwright::Util;
 use LWP::UserAgent;
+use Time::HiRes qw{usleep};
 
 use constant IS_WIN => $^O eq 'MSWin32';
 
@@ -17,7 +18,7 @@ sub main {
     die "Reaping unsupported on Windows." if IS_WIN;
 
     my $t = Proc::ProcessTable->new;
-    my @matches = grep { $_->cmndline =~ m/playwright_server --port/ } @{$t->table};
+    my @matches = _scan_for_playwright_processes($t);
 
     my $ua = LWP::UserAgent->new();
 
@@ -25,14 +26,27 @@ sub main {
        print "$process->cmndline\n";
        my ($port) = $process->cmndline =~ m/playwright_server --port (\d+)/;
        next unless $port;
+       #XXX ACHTUNG BABY - this will fail if the process is 'd.
        print "Instructing playwright_server process ".$process->pid()." listening on $port to shut down...\n";
        Playwright::Util::request( 'GET', 'shutdown', 'localhost', $port, $ua );
     }
 
     # Make sure everything is shut down before returning
-    sleep 1 if (@matches);
+    my $tries = 0;
+    while (_scan_for_playwright_processes($t)) {
+        if ( $tries > 1000 ) {
+            warn "Playwright processes were not terminated after 1s!";
+            return 1;
+        }
+        usleep 1000;
+    }
 
     return 0;
+}
+
+sub _scan_for_playwright_processes {
+    my $t = shift;
+    return grep { $_->cmndline =~ m/playwright_server --port/ } @{$t->table};
 }
 
 1;
