@@ -1,4 +1,4 @@
-#!/usr/bin/node
+#!/usr/bin/env node
 
 "use strict";
 
@@ -8,6 +8,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Assume their kit is good
+module.paths.push( '/usr/local/lib/node_modules' );
 require('uuid');
 require('playwright');
 require('express');
@@ -273,7 +274,7 @@ app.post('/command', async (req, res) => {
     } else if (command == 'on' && subject && spec[type].members.waitForEvent ) {
         try {
             var evt = args.shift();
-            const cb  = new Function (args.shift());
+            const cb  = new Function (...args);
             subject.on(evt,cb);
             result = { error : false, message : "Listener set up" };
         } catch (e) {
