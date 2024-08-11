@@ -1,5 +1,10 @@
 Revision history for Playwright
 
+1.460 2024-08-11 TEODESIAN
+    - Fix GetCDPSession, and likely other things passing objects around to each other
+    - Fix #62 - Explosion when running reap_playwright_servers, thanks to Keith Carangelo
+    - Fix issue working with some methods that take multiple arguments, thanks to Keith Carangelo
+
 1.431 2024-04-13 TEODESIAN
     - Add support for running this module on microsoft windows.  reap_playwright_servers is not currently supported.
 
