@@ -186,6 +186,11 @@ app.post('/command', async (req, res) => {
         }
     }
 
+    // Sometimes the arg is *also* a thing to look up, like when passing page to getCDPSession, or passing elements.
+    args = args.map( x =>
+        x.uuid ? objects[x.uuid] : x
+    );
+
     if (subject && spec[type] && spec[type].members[command]) {
         try {
 
@@ -195,9 +200,6 @@ app.post('/command', async (req, res) => {
             if (command == 'evaluate' || command == 'evaluateHandle') {
                 var toEval = args.shift();
                 const fun = new Function (toEval);
-                args = args.map( x =>
-                    x.uuid ? objects[x.uuid] : x
-                );
                 args = [
                     fun,
                     ...args
