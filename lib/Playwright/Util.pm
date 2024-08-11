@@ -11,6 +11,7 @@ use Sereal::Encoder;
 use Sereal::Decoder;
 use File::Temp;
 use POSIX();
+use Scalar::Util qw{reftype};
 
 #ABSTRACT: Common utility functions for the Playwright module
 
@@ -29,10 +30,11 @@ sub request ( $method,$url, $host, $port, $ua, %args ) {
     my $fullurl = "http://$host:$port/$url";
 
     # Handle passing Playwright elements as arguments
+    # Seems we also pass Playwright pages to get CDP Handles
     if (ref $args{args} eq 'ARRAY') {
         @{$args{args}} = map {
             my $transformed = $_;
-            if (ref($_) eq 'Playwright::ElementHandle' ) {
+            if ( ref $_ && reftype $_ eq 'HASH' && exists $_->{guid} ) {
                 $transformed = { uuid => $_->{guid} }
             }
             $transformed;
