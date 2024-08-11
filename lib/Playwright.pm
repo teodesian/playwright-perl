@@ -17,6 +17,7 @@ use Sub::Install();
 use Net::EmptyPort();
 use JSON::MaybeXS();
 use File::Which();
+use File::Temp();
 use Capture::Tiny qw{capture_merged capture_stderr};
 use Carp qw{confess};
 
@@ -752,7 +753,7 @@ sub _start_server ( $port, $cdp_uri, $timeout, $debug, $cleanup ) {
     # Orphan the process in the event that cleanup => 0
     if (!$cleanup) {
         print "Detaching child process...\n";
-        #chdir '/';
+        chdir File::Temp::tempdir( CLEANUP => 1 );
         require POSIX;
         die "Cannot detach playwright_server process for persistence" if POSIX::setsid() < 0;
         require Capture::Tiny;
