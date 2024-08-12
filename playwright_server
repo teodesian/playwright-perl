@@ -7,8 +7,9 @@ const { exit } = require('process');
 const fs = require('fs');
 const path = require('path');
 
-// Assume their kit is good
 module.paths.push( '/usr/local/lib/node_modules' );
+
+// Assume their kit is good
 require('uuid');
 require('playwright');
 require('express');

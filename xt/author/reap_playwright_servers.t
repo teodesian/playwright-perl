@@ -1,23 +1,23 @@
 use strict;
 use warnings;
 
-BEGIN {
-  unless ($ENV{AUTHOR_TESTING}) {
-    print qq{1..0 # SKIP these tests are for testing by the author\n};
-    exit;
-   }
-}
-
 use Net::EmptyPort qw(empty_port);
 use Playwright;
 use Test2::V0;
 use Cwd qw{abs_path};
 use FindBin;
 
-my $path2bin = abs_path("$FindBin::Bin/../../bin");
-require("$path2bin/reap_playwright_servers");
+BEGIN {
+    unless ($ENV{AUTHOR_TESTING}) {
+        print qq{1..0 # SKIP these tests are for testing by the author\n};
+        exit;
+    }
+    $ENV{NODE_PATH} //= '';
+    $ENV{NODE_PATH} = Playwright::Util::find_node_modules().":$ENV{NODE_PATH}";
+}
 
-$ENV{PATH} = "$path2bin:$ENV{PATH}";
+my $path2bin = Playwright::Util::_find("bin/reap_playwright_servers");
+require($path2bin);
 
 my $handle = Playwright->new( cleanup => 0 );
 my $browser = $handle->launch( headless => 1, type => 'chrome' );

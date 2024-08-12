@@ -4,17 +4,19 @@ use warnings;
 use Test2::V0;
 use Test2::Tools::Explain;
 use Playwright;
+use Playwright::Util;
 
 use File::Which;
 use Net::EmptyPort;
 
 BEGIN {
-   unless ($ENV{AUTHOR_TESTING}) {
-     print qq{1..0 # SKIP these tests are for testing by the author\n};
-     exit;
+    unless ($ENV{AUTHOR_TESTING}) {
+        print qq{1..0 # SKIP these tests are for testing by the author\n};
+        exit;
     }
+    $ENV{NODE_PATH} //= '';
+    $ENV{NODE_PATH} = Playwright::Util::find_node_modules().":$ENV{NODE_PATH}";
 }
-
 
 my $chromium = File::Which::which('chromium') || File::Which::which('chromium-browser');
 die "Chromium not installed on this host." unless $chromium;
@@ -34,7 +36,7 @@ my $handle = Playwright->new( debug => 1, cdp_uri => "http://127.0.0.1:$port" );
 my $browser = $handle->launch( headless => 1, type => 'chrome' );
 
 # Open a tab therein
-my $page = $browser->newPage({ videosPath => 'video', acceptDownloads => 1 });
+my $page = $browser->newPage({ acceptDownloads => 1 });
 
 # Load a URL in the tab
 my $res = $page->goto('http://troglodyne.net', { waitUntil => 'networkidle' });

@@ -3,23 +3,26 @@ use feature ':5.16';
 use strict;
 use warnings;
 
-BEGIN {
-   unless ($ENV{AUTHOR_TESTING}) {
-     print qq{1..0 # SKIP these tests are for testing by the author\n};
-     exit;
-    }
-}
-
 use Cwd 'abs_path';
 use FindBin;
 use Playwright;
+use Playwright::Util;
 use Test2::V0;
+
+BEGIN {
+    unless ($ENV{AUTHOR_TESTING}) {
+        print qq{1..0 # SKIP these tests are for testing by the author\n};
+        exit;
+    }
+    $ENV{NODE_PATH} //= '';
+    $ENV{NODE_PATH} = Playwright::Util::find_node_modules().":$ENV{NODE_PATH}";
+}
 
 my $handle = Playwright->new();
 my $browser = $handle->launch( headless => 1, type => 'chrome' );
 my $page = $browser->newPage();
 
-my $page_file = abs_path( "$FindBin::Bin/js_dialog.html" );
+my $page_file = Playwright::Util::_find( "js_dialog.html" );
 my $res = $page->goto( "file://$page_file", { waitUntil => 'networkidle' });
 
 # Test that we can confirm a javascript dialog via JS

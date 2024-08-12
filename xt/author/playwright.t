@@ -3,16 +3,22 @@ use warnings;
 
 use Data::Dumper;
 use Playwright;
+use Playwright::Util;
 use Try::Tiny;
 use Net::EmptyPort;
 use Carp::Always;
 use Test2::V0;
+use File::Temp;
+use File::Copy;
+use File::Find;
 
 BEGIN {
-   unless ($ENV{AUTHOR_TESTING}) {
-     print qq{1..0 # SKIP these tests are for testing by the author\n};
-     exit;
+    unless ($ENV{AUTHOR_TESTING}) {
+        print qq{1..0 # SKIP these tests are for testing by the author\n};
+        exit;
     }
+    $ENV{NODE_PATH} //= '';
+    $ENV{NODE_PATH} = Playwright::Util::find_node_modules().":$ENV{NODE_PATH}";
 }
 
 my $handle = Playwright->new( debug => 1 );
@@ -23,7 +29,8 @@ my $process = $handle->server( browser => $browser, command => 'process' );
 note "Browser PID: ".$process->{pid}."\n";
 
 # Open a tab therein
-my $page = $browser->newPage({ videosPath => 'video', acceptDownloads => 1 });
+my $tempdir = File::Temp::tempdir( CLEANUP => 1 );
+my $page = $browser->newPage({ videosPath => $tempdir, acceptDownloads => 1 });
 
 # Test the spec method
 ok($page->spec(), "Was able to open a browser and fetch the playwright spec");
@@ -90,7 +97,7 @@ $actual_input->fill('whee');
 ok($actual_input->{parent}, "Can fetch parent of any element");
 
 # Take screen of said element
-ok($actual_input->screenshot({ path => 'test.jpg' }), "Can take screenshot");
+ok($actual_input->screenshot({ path => "$tempdir/test.jpg" }), "Can take screenshot");
 
 # Fiddle with HIDs
 my $mouse = $page->mouse;
@@ -99,9 +106,7 @@ my $keyboard = $page->keyboard();
 is($keyboard->type('F12'), undef, "Can type keys");
 
 # Start to do some more advanced actions with the page
-use FindBin;
-use Cwd qw{abs_path};
-my $pg = abs_path("$FindBin::Bin/test.html");
+my $pg = Playwright::Util::_find("test.html");
 
 # Handle dialogs on page start, and dialog after dialog
 # NOTE -- the 'load' event won't fire until the dialog is dismissed in some browsers
@@ -117,6 +122,7 @@ is($dlg->accept(), undef, "Can accept dialog");
 # Download stuff -- note this requries acceptDownloads = true in the page open
 # NOTE -- the 'download' event fires unreliably, as not all browsers properly obey the 'download' property in hrefs.
 # Chrome, for example would choke here on an intermediate dialog.
+
 $promise = $page->waitForEvent('download');
 sleep 1;
 $page->select('#d-lo')->click();
@@ -125,13 +131,13 @@ my $download = $handle->await( $promise );
 
 print "Download suggested filename\n";
 print $download->suggestedFilename()."\n";
-is($download->saveAs('test2.jpg'), undef, "can download stuff");
+is($download->saveAs("$tempdir/test2.jpg"), undef, "can download stuff");
 
 # Fiddle with file inputs
 my $choochoo = $page->waitForEvent('filechooser');
 $page->select('#drphil')->click();
 my $chooseu = $handle->await( $choochoo );
-is($chooseu->setFiles('test.jpg'), undef, "Can interact with file picker");
+is($chooseu->setFiles("$tempdir/test.jpg"), undef, "Can interact with file picker");
 
 # Make sure we can do child selectors
 my $parent = $page->select('body');
@@ -175,6 +181,8 @@ my $bideo = $page->video;
 
 # IT IS IMPORTANT TO CLOSE THE PAGE FIRST OR THIS WILL HANG!
 $page->close();
-my $vidpath = $bideo->saveAs('video/example.webm');
+my (undef, $tfile) = File::Temp::tempfile();
+my $vidpath = $bideo->saveAs("$tempdir/example.webm");
 is($vidpath, undef, "Can save video");
+
 done_testing();

@@ -415,10 +415,11 @@ sub _check_node {
     $node_bin = File::Which::which('node');
     confess("node must exist, be in your PATH and executable") unless $node_bin && -x $node_bin;
 
-    my $path2here = File::Basename::dirname( Cwd::abs_path( $INC{'Playwright.pm'} ) );
-
     # Make sure it's possible to start the server
     $server_bin = File::Which::which('playwright_server');
+    # If it's not in $PATH, it should be in ../bin
+    $server_bin //= Playwright::Util::find_playwright_server();
+
     confess("Can't locate playwright_server!
     Please ensure it is installed in your PATH.
     If you installed this module from CPAN, it should already be.")
@@ -707,11 +708,15 @@ sub DESTROY ($self) {
 }
 
 sub _wait_port( $port, $timeout, $debug ) {
+    #XXX unusedvars is wigging
+    $debug = $debug;
+    my $result;
+    $result = $result;
+
     # Check if the port is already live, and short-circuit if this is the case.
     if (IS_WIN) {
-        my $result;
         for (0..$timeout) {
-            my $result = qx{netstat -na | findstr "$port"};
+            $result = qx{netstat -na | findstr "$port"};
             print "Waiting on port $port: $result\n" if $debug;
             last if $result;
             sleep 1;
@@ -772,8 +777,9 @@ sub _start_server_windows ( $port, $timeout, $debug, $cleanup, @args) {
         my $pid = qq/playwright-server:$port/;
         my @cmdprefix = ("start /MIN", qq{"$pid"});
 
-        my $node_bin = File::Which::which('node');
-        my $server_bin = File::Which::which('playwright_server');
+        # Test::UnusedVars hack
+        $cleanup = '';
+
         my $cmdstring = join(' ', @cmdprefix, @args );
         print "$cmdstring\n" if $debug;
         system($cmdstring);

@@ -12,6 +12,7 @@ use Sereal::Decoder;
 use File::Temp;
 use POSIX();
 use Scalar::Util qw{reftype};
+use Cwd();
 
 #ABSTRACT: Common utility functions for the Playwright module
 
@@ -84,6 +85,25 @@ sub await ($to_wait) {
     waitpid($to_wait->{pid},0);
     confess("Timed out while waiting for event.") unless -f $to_wait->{file}->filename && -s _;
     return Sereal::Decoder->decode_from_file($to_wait->{file}->filename);
+}
+
+# Make author tests work
+sub find_node_modules {
+    return _find('node_modules');
+}
+
+sub find_playwright_server {
+    return _find('bin/playwright_server');
+}
+
+sub _find {
+    my $to_find = shift;
+    my $dir = File::Basename::dirname( Cwd::abs_path( $INC{'Playwright/Util.pm'} ) );
+    while (!-e "$dir/$to_find") {
+        $dir = Cwd::abs_path("$dir/..");
+        last if $dir eq '/';
+    }
+    return Cwd::abs_path("$dir/$to_find");
 }
 
 1;

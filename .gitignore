@@ -48,9 +48,6 @@ node_modules
 package-lock.json
 
 #nobody need know of our love, baby
-test.jpg
-test2.jpg
-video/*
 api.json
 
 bin/playwright_server.bat

@@ -97,7 +97,7 @@ NORMAL: {
     # Start to do some more advanced actions with the page
     use FindBin;
     use Cwd qw{abs_path};
-    my $pg = abs_path("$FindBin::Bin/at/test.html");
+    my $pg = abs_path("$FindBin::Bin/test.html");
 
     # Handle dialogs on page start, and dialog after dialog
     # NOTE -- the 'load' event won't fire until the dialog is dismissed in some browsers
