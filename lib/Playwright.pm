@@ -675,7 +675,10 @@ sub quit ($self) {
     $self->{killed} = 1;
     print "Attempting to terminate server process...\n" if $self->{debug};
 
-    Playwright::Util::request( 'GET', 'shutdown', $self->{host}, $self->{port}, $self->{ua} );
+    # Best effort to whack this, we can't make guarantees during global destruction
+    eval {
+        Playwright::Util::request( 'GET', 'shutdown', $self->{host}, $self->{port}, $self->{ua} );
+    } if $self->{ua};
 
     return $self->_kill_playwright_server_windows() if IS_WIN;
 
