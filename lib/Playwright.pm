@@ -424,6 +424,8 @@ sub _check_node {
     If you installed this module from CPAN, it should already be.")
       unless $server_bin && -x $server_bin;
 
+    $server_bin = Cwd::abs_path( $server_bin );
+
     # Attempt to start the server.  If we can't do this, we almost certainly have dependency issues.
     my $output = '';
     if (IS_WIN) {

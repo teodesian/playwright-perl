@@ -8,6 +8,14 @@ use Playwright;
 use File::Which;
 use Net::EmptyPort;
 
+BEGIN {
+   unless ($ENV{AUTHOR_TESTING}) {
+     print qq{1..0 # SKIP these tests are for testing by the author\n};
+     exit;
+    }
+}
+
+
 my $chromium = File::Which::which('chromium') || File::Which::which('chromium-browser');
 die "Chromium not installed on this host." unless $chromium;
 
