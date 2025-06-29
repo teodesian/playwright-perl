@@ -216,7 +216,16 @@ app.post('/command', async (req, res) => {
 
             if (Array.isArray(commandResult)) {
                 for (var r of commandResult) {
-                    objects[r._guid] = r;
+                    // Some things like Locator arrays don't set themselves up properly
+                    if (typeof r === 'object' && !Array.isArray(r) && r !== null) {
+                        if (!r._type) {
+                            r._type = type;
+                        }
+                        if (!r._guid) {
+                            r._guid = type + '@' + uuidv4();
+                        }
+                        objects[r._guid] = r;
+                    }
                 }
             }
 

@@ -163,6 +163,12 @@ NORMAL: {
     my $image = $page->getByAltText('picture');
     print Dumper($image);
 
+    # Test that we can use locators which return multiple elements.
+    my $multi_loc = $page->locator('a');
+    foreach my $loc (@{$multi_loc->all()}) {
+        print $loc->getAttribute('href')."\n";
+    }
+
     # Save a video now that we are done
     my $bideo = $page->video;
 
