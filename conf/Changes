@@ -1,5 +1,8 @@
 Revision history for Playwright
 
+1.531 2025-06-29 TEODESIAN
+    - Fix Locator.all(), and likely other things returning arrays of playwright objects
+
 1.460 2024-08-11 TEODESIAN
     - Fix GetCDPSession, and likely other things passing objects around to each other
     - Fix #62 - Explosion when running reap_playwright_servers, thanks to Keith Carangelo
