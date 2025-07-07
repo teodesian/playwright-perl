@@ -41,13 +41,20 @@ my ($context) = @{$browser->contexts()};
 ok($context, "Got a browser context");
 
 # Load a URL in the tab
-my $res = $page->goto('http://troglodyne.net', { waitUntil => 'networkidle' });
+my $url = 'http://troglodyne.net';
+my $res = $page->goto($url, { waitUntil => 'networkidle' });
 ok($res->status(), "Was able to fetch a webpage");
 note $browser->version();
 
 # Put your hand in the jar
+$context->addCookies( [ { name => 'pw_testing', value => '1', url => $url }, { name => 'pw_cookie', value => 'trog', url => $url } ] );
 my $cookies = $context->cookies();
-ok($cookies, "was able to read the cookie jar");
+is( scalar @{ $cookies }, 2, "Was able to read the cookie jar");
+
+# Allow cookies to be returned in either order
+my $first = $cookies->[0]{ name } eq 'pw_testing' ? 0 : 1;
+is( $cookies->[$first]{ name }, 'pw_testing', "Retrieved first cookie");
+is( $cookies->[!$first || 0]{ value }, 'trog', "Retrieved second cookie");
 
 # Grab the main frame, in case this is a frameset
 my $frameset = $page->mainFrame();
