@@ -214,7 +214,7 @@ app.post('/command', async (req, res) => {
                 commandResult = await subject[command](...args);
             }
 
-            if (Array.isArray(commandResult)) {
+            if (command !== 'cookies' && Array.isArray(commandResult)) {
                 for (var r of commandResult) {
                     // Some things like Locator arrays don't set themselves up properly
                     if (typeof r === 'object' && !Array.isArray(r) && r !== null) {
