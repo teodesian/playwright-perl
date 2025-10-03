@@ -1,5 +1,9 @@
 Revision history for Playwright
 
+1.551 2025-10-03 TEODESIAN
+    - Trap errors parsing responses from playwright-server, patch by Sherrard Burton.
+    - Allow configuration of the max size of responses to requests via constructor option 'maxrequest'.
+
 1.531 2025-06-29 TEODESIAN
     - Fix Locator.all(), and likely other things returning arrays of playwright objects
 
