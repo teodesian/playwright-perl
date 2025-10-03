@@ -51,3 +51,7 @@ package-lock.json
 api.json
 
 bin/playwright_server.bat
+
+# Artifacts created by example.pl
+video/
+*.jpg
