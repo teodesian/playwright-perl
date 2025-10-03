@@ -51,11 +51,10 @@ sub request ( $method,$url, $host, $port, $ua, %args ) {
     # If we get this kind of response the server failed to come up :(
     die "playwright server failed to spawn!" if $content =~ m/^Can't connect to/;
 
-    my $decoded;
-    eval {$decoded = JSON::MaybeXS::decode_json($content);};
-    if (my $error = $@) {
-      die(sprintf(qq[error decoding Playwright server response: %s\ncontent:\n%s\n], $error, $content));
-    }
+    local $@;
+    my $decoded = eval { JSON::MaybeXS::decode_json($content) } or do {
+      confess(qq[error decoding Playwright server response: $@\ncontent:\n$content\n]);
+    };
 
     my $msg      = $decoded->{message};
 
