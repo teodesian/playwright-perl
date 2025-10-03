@@ -6,6 +6,7 @@
 const { exit } = require('process');
 const fs = require('fs');
 const path = require('path');
+const { env } = require('process');
 
 module.paths.push( '/usr/local/lib/node_modules' );
 
@@ -18,6 +19,11 @@ require('express');
 const { v4 : uuidv4 } = require('uuid');
 const { chromium, firefox, webkit, devices } = require('playwright');
 const express = require('express');
+const bodyParser = require('body-parser');
+
+// Setup the max body size
+// Stuff like this is why I don't usually use frameworks, just chunk it dawg
+var MAX_REQUEST_SIZE = env.MAX_REQUEST_SIZE;
 
 // Defines our interface
 // let sharedir = require.resolve('playwright'); // api.json should be shipped with playwright itself
@@ -102,6 +108,8 @@ if ( args.filter(arg => arg == '--cdp').length > 0 ) {
 }
 
 const app = express();
+app.use(bodyParser.json({ limit: MAX_REQUEST_SIZE }));
+
 const port = got_port;
 
 var objects = {};

@@ -404,6 +404,7 @@ Creates a new browser and returns a handle to interact with it.
     debug (BOOL) : Print extra messages from the Playwright server process. Default: false
     timeout (INTEGER) : Seconds to wait for the playwright server to spin up and down.  Default: 30s
     cleanup (BOOL) : Whether or not to clean up the playwright server when this object goes out of scope.  Default: true
+    maxrequest (STRING) : Maximum size of bodies returned by playwright.  Refer to L<https://www.npmjs.com/package/body-parser#limit> for the format of the string.
 
 =cut
 
@@ -484,6 +485,7 @@ sub new ( $class, %options ) {
     my $port = $options{port} // Net::EmptyPort::empty_port();
     my $cdp_uri = $options{cdp_uri} // '';
     my $timeout = $options{timeout} // 30;
+    $options{maxrequest} //= '100kb';
     my $cleanup = ($options{cleanup} // !($options{ port } || $options{ host })) ? 1 : 0;
     my $self = bless(
         {
@@ -502,6 +504,9 @@ sub new ( $class, %options ) {
 
     $self->_check_and_build_spec();
     _build_classes();
+
+    # Control things about the environment we start pw in
+    $ENV{MAX_REQUEST_SIZE} = $options{maxrequest};
 
     return $self;
 }
