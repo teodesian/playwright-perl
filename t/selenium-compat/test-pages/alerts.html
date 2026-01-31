@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+<head><title>Alerts Page</title></head>
+<body>
+    <h1>Alert Tests</h1>
+    <button id="alert-btn" onclick="alert('Hello Alert')">Trigger Alert</button>
+    <button id="confirm-btn" onclick="document.getElementById('confirm-result').textContent = confirm('Are you sure?') ? 'true' : 'false'">Trigger Confirm</button>
+    <button id="prompt-btn" onclick="document.getElementById('prompt-result').textContent = prompt('Enter value:', 'default')">Trigger Prompt</button>
+
+    <span id="confirm-result"></span>
+    <span id="prompt-result"></span>
+</body>
+</html>
