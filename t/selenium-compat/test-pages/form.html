@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Form Page</title>
+    <style>
+        .big-box { width: 200px; height: 100px; }
+        .disabled-input { }
+        #colored-div { color: rgb(255, 0, 0); background-color: rgb(0, 0, 255); }
+    </style>
+</head>
+<body>
+    <h1>Form Test Page</h1>
+
+    <form id="test-form" action="/submit" method="post">
+        <input type="text" id="fname" name="fname" value="" placeholder="First Name" />
+        <input type="text" id="lname" name="lname" value="Doe" />
+        <input type="password" id="password" name="password" />
+        <textarea id="comments" name="comments">Default text</textarea>
+
+        <select id="color-select" name="color">
+            <option value="red">Red</option>
+            <option value="green" selected>Green</option>
+            <option value="blue">Blue</option>
+        </select>
+
+        <input type="checkbox" id="cb1" name="agree" value="yes" />
+        <label for="cb1">I agree</label>
+
+        <input type="checkbox" id="cb2" name="newsletter" value="yes" checked />
+        <label for="cb2">Newsletter</label>
+
+        <input type="radio" id="r1" name="gender" value="male" />
+        <label for="r1">Male</label>
+
+        <input type="radio" id="r2" name="gender" value="female" checked />
+        <label for="r2">Female</label>
+
+        <input type="submit" id="submit-btn" value="Submit" />
+        <button type="button" id="regular-btn">Click Me</button>
+
+        <input type="text" id="disabled-input" disabled value="cant touch this" />
+    </form>
+
+    <div id="colored-div" class="big-box">Colored Box</div>
+
+    <div id="click-counter">
+        <button id="count-btn" onclick="document.getElementById('count').textContent = parseInt(document.getElementById('count').textContent) + 1">Count</button>
+        <span id="count">0</span>
+    </div>
+</body>
+</html>
