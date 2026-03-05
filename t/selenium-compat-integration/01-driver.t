@@ -435,7 +435,11 @@ subtest "Alert handling" => sub {
     );
     $driver->get(file_url('alerts.html'));
 
-    # Trigger alert
+    # Arm the dialog listener BEFORE the click that triggers the dialog.
+    # Playwright fires dialogs as events that must be handled before the
+    # triggering action returns.
+    $driver->arm_dialog_listener();
+
     my $btn = $driver->find_element('alert-btn', 'id');
     $btn->click();
 

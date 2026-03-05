@@ -20,6 +20,9 @@ BEGIN {
         $INC{$file} = 1;  # Prevent require from trying to load files
         eval "package $pkg; 1;";
     }
+    # Stub the real Selenium::Remote::WebElement so @ISA doesn't fail
+    $INC{'Selenium/Remote/WebElement.pm'} = 1;
+    eval 'package Selenium::Remote::WebElement; 1;';
 }
 
 # De-fang Playwright's BEGIN block (same pattern as t/Playwright.t)
@@ -36,7 +39,7 @@ my %call_log;
 
 # Mock page object
 my $mock_page = bless {
-    guid => 'page-1',
+    guid => 'page-guid-1',
     type => 'Page',
     _viewport => { width => 1024, height => 768 },
     _url => 'about:blank',
@@ -157,6 +160,7 @@ $mock_eh_mod->mock('type', sub ($self, $text, @args) { $call_log{eh_type} = $tex
 $mock_eh_mod->mock('focus', sub ($self) { $call_log{eh_focus} = 1; return });
 $mock_eh_mod->mock('innerText', sub ($self) { return 'element text' });
 $mock_eh_mod->mock('getAttribute', sub ($self, $name) { return "attr-$name" });
+$mock_eh_mod->mock('inputValue', sub ($self) { return 'input_value' });
 $mock_eh_mod->mock('evaluate', sub ($self, $script, @args) { return 'eval_result' });
 $mock_eh_mod->mock('isVisible', sub ($self) { return 1 });
 $mock_eh_mod->mock('isHidden', sub ($self) { return 0 });
@@ -191,6 +195,7 @@ $mock_pw->mock('popt', sub ($self, @args) { return });
 $mock_pw->mock('try_until', sub ($self, $target, $method, @args) {
     return $target->$method(@args);
 });
+$mock_pw->mock('_check_and_build_spec', sub ($self) { return 1 });
 
 # Mock Dialog
 my $mock_dialog_mod = Test::MockModule->new('Playwright::Dialog');
@@ -198,7 +203,7 @@ $mock_dialog_mod->mock('message', sub ($self) { return $self->{_message} });
 $mock_dialog_mod->mock('accept', sub ($self, @args) { $call_log{dialog_accept} = \@args; return });
 $mock_dialog_mod->mock('dismiss', sub ($self) { $call_log{dialog_dismiss} = 1; return });
 
-# Now load SeleniumMigrator
+# Now load SeleniumMigrator (which triggers :dropin aliasing)
 require Playwright::SeleniumMigrator;
 
 # ==============================
@@ -212,13 +217,15 @@ subtest "Constructor" => sub {
         auto_close   => 0,
     );
     ok($driver, 'Driver created');
-    is(ref $driver, 'Selenium::Remote::Driver', 'Correct class');
+    is(ref $driver, 'Selenium::Remote::Driver', 'Correct class (dropin name)');
+    ok($driver->isa('Selenium::Remote::Driver::Playwright'), 'isa Playwright driver');
     ok($driver->{_pw}, 'Has Playwright handle');
     ok($driver->{_browser}, 'Has browser');
     ok($driver->{_page}, 'Has page');
     ok($driver->{_context}, 'Has context');
     is($driver->{_auto_close}, 0, 'auto_close set to 0');
     is($driver->{_default_finder}, 'xpath', 'Default finder is xpath');
+    is($driver->{_current_handle}, $mock_page->{guid}, 'Window handle is page GUID');
 
     # Clean up without auto-close
     $driver->quit();
@@ -296,7 +303,8 @@ subtest "Element Finding" => sub {
 
     my $el = $driver->find_element('#test', 'css');
     ok($el, 'find_element returns element');
-    is(ref $el, 'Selenium::Remote::WebElement', 'Correct WebElement class');
+    is(ref $el, 'Selenium::Remote::WebElement', 'Correct WebElement class (dropin name)');
+    ok($el->isa('Selenium::Remote::WebElement::Playwright'), 'isa Playwright WebElement');
     is($call_log{select}, '#test', 'CSS selector passed through');
 
     $driver->find_element('myid', 'id');
@@ -383,6 +391,7 @@ subtest "WebElement Methods" => sub {
 
     is($el->get_text(), 'element text', 'get_text returns innerText');
     is($el->get_attribute('href'), 'attr-href', 'get_attribute works');
+    is($el->get_value(), 'input_value', 'get_value uses inputValue()');
     is($el->is_displayed(), 1, 'is_displayed returns boolean');
     is($el->is_enabled(), 1, 'is_enabled returns boolean');
     is($el->is_selected(), 0, 'is_selected returns boolean');
@@ -395,7 +404,11 @@ subtest "WebElement Methods" => sub {
     is($loc->{x}, 10, 'get_element_location x');
     is($loc->{y}, 20, 'get_element_location y');
 
-    ok($el->id(), 'Element has id');
+    my $rect = $el->get_element_rect();
+    is($rect->{x}, 10, 'get_element_rect x');
+    is($rect->{width}, 100, 'get_element_rect width');
+
+    is($el->id(), 'eh-1', 'Element id is the GUID');
 
     $driver->{_auto_close} = 0;
 };
@@ -451,8 +464,7 @@ subtest "Window Management" => sub {
     my $driver = Selenium::Remote::Driver->new(auto_close => 0);
 
     my $handle = $driver->get_current_window_handle();
-    ok($handle, 'get_current_window_handle returns a handle');
-    like($handle, qr/^CDwindow-/, 'Handle has expected format');
+    is($handle, $mock_page->{guid}, 'get_current_window_handle returns page GUID');
 
     my $handles = $driver->get_window_handles();
     is(ref $handles, 'ARRAY', 'get_window_handles returns arrayref');
@@ -513,6 +525,20 @@ subtest "Cookies" => sub {
     $driver->{_auto_close} = 0;
 };
 
+subtest "Cookie shimming" => sub {
+    $mock_context->{_cookies} = [];
+    my $driver = Selenium::Remote::Driver->new(auto_close => 0);
+
+    # Simulate Playwright returning a cookie with 'expires' field
+    push @{$mock_context->{_cookies}}, { name => 'pw', value => 'v', expires => 9999 };
+    my $cookies = $driver->get_all_cookies();
+    ok(exists $cookies->[0]{expiry}, 'expires shimmed to expiry');
+    ok(!exists $cookies->[0]{expires}, 'raw expires removed');
+    is($cookies->[0]{expiry}, 9999, 'expiry value preserved');
+
+    $driver->{_auto_close} = 0;
+};
+
 subtest "Timeouts" => sub {
     my $driver = Selenium::Remote::Driver->new(auto_close => 0);
 
@@ -540,9 +566,7 @@ subtest "Screenshots" => sub {
     %call_log = ();
     my $driver = Selenium::Remote::Driver->new(auto_close => 0);
 
-    # screenshot() now saves to a temp file and base64-encodes it.
-    # The mock screenshot writes 'base64data' as path, so we test
-    # capture_screenshot (which just passes through to page.screenshot).
+    # capture_screenshot passes through to page.screenshot with a path
     my $data = $driver->capture_screenshot('/tmp/test_screenshot.png');
     ok($data, 'capture_screenshot returns truthy');
 
@@ -553,16 +577,16 @@ subtest "Alerts" => sub {
     %call_log = ();
     my $driver = Selenium::Remote::Driver->new(auto_close => 0);
 
-    # Simulate arming the dialog listener (normally done via click())
-    $driver->_ensure_dialog_listener();
-    ok($call_log{waitForEvent}, 'Dialog listener armed waitForEvent');
-    ok($call_log{page_on}, 'Dialog on() handler registered');
+    # arm_dialog_listener() must be called before the action that triggers a dialog
+    $driver->arm_dialog_listener();
+    ok($call_log{waitForEvent}, 'arm_dialog_listener armed waitForEvent');
+    ok($call_log{page_on}, 'arm_dialog_listener registered on() handler');
 
     my $text = $driver->get_alert_text();
     is($text, 'test alert', 'get_alert_text returns dialog message');
 
-    # Re-arm for accept test (dialog is auto-accepted by on() handler)
-    $driver->_ensure_dialog_listener();
+    # Re-arm for next dialog
+    $driver->arm_dialog_listener();
     $driver->accept_alert();
     pass('accept_alert completed without error');
 
@@ -593,7 +617,7 @@ subtest "Miscellaneous" => sub {
     ok($caps->{browserName}, 'get_capabilities returns browserName');
 
     my $status = $driver->status();
-    ok($status->{ready}, 'status returns ready');
+    ok($status->{ready}, 'status calls _check_and_build_spec');
 
     $driver->{_auto_close} = 0;
 };

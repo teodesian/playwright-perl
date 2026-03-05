@@ -1,4 +1,16 @@
-package Selenium::Remote::Driver;
+package Playwright::SeleniumMigrator::Driver;
+
+# This file is loaded as Playwright::SeleniumMigrator::Driver but the
+# actual implementation lives in Selenium::Remote::Driver::Playwright below.
+# We forward import() so that:
+#   use Playwright::SeleniumMigrator::Driver ':dropin';
+# triggers the namespace aliasing.
+sub import {
+    my (undef, @tags) = @_;
+    Selenium::Remote::Driver::Playwright->import(@tags) if @tags;
+}
+
+package Selenium::Remote::Driver::Playwright;
 
 use strict;
 use warnings;
@@ -6,17 +18,67 @@ use warnings;
 use v5.28;
 
 use Carp qw{confess carp};
-use Data::Dumper;
 
 no warnings 'experimental';
 use feature qw{signatures};
 
 use Playwright::SeleniumMigrator::WDKeys;
 
-# Playwright is loaded lazily at new() time.
-# We skip Playwright's BEGIN block (_check_node) and let it run
-# during new() instead, since the server binary may not be in PATH
-# at compile time.
+# The WebElement class to instantiate.  In :dropin mode this becomes
+# 'Selenium::Remote::WebElement' so that ref() checks in existing tests pass.
+our $WECLASS = 'Selenium::Remote::WebElement::Playwright';
+
+=head1 NAME
+
+Selenium::Remote::Driver::Playwright - Selenium::Remote::Driver compatibility
+shim backed by Playwright
+
+=head1 SYNOPSIS
+
+    # Drop-in replacement (makes Selenium::Remote::Driver an alias):
+    use Selenium::Remote::Driver::Playwright ':dropin';
+    my $driver = Selenium::Remote::Driver->new(browser_name => 'chrome');
+
+    # Or via the SeleniumMigrator umbrella module:
+    use Playwright::SeleniumMigrator;
+    my $driver = Selenium::Remote::Driver->new(browser_name => 'chrome');
+
+=head1 DESCRIPTION
+
+Implements the C<Selenium::Remote::Driver> API backed by Playwright.
+
+Concept mapping: a Selenium I<window> corresponds to a Playwright I<Page>.
+Window handles returned by C<get_current_window_handle> / C<get_window_handles>
+are the GUIDs of the underlying Playwright Page objects.
+
+=head2 import(':dropin')
+
+When loaded with the C<:dropin> tag, C<Selenium::Remote::Driver> and
+C<Selenium::Remote::WebElement> become aliases for this package and
+C<Selenium::Remote::WebElement::Playwright> respectively, so existing test
+suites need no code changes.
+
+=cut
+
+sub import {
+    my ($class, @tags) = @_;
+    if (grep { $_ eq ':dropin' } @tags) {
+        no strict 'refs';
+        # Make Selenium::Remote::Driver delegate to this package via @ISA
+        unshift @{'Selenium::Remote::Driver::ISA'}, $class;
+        # Same for WebElement
+        unshift @{'Selenium::Remote::WebElement::ISA'}, 'Selenium::Remote::WebElement::Playwright';
+        # Pretend the real Selenium modules are loaded so other code doesn't
+        # try to require them
+        $INC{'Selenium/Remote/Driver.pm'}     //= __FILE__;
+        $INC{'Selenium/Remote/WebElement.pm'} //= $INC{'Playwright/SeleniumMigrator/WebElement.pm'} // __FILE__;
+        # In dropin mode, find_element etc. should bless into the Selenium name
+        $WECLASS = 'Selenium::Remote::WebElement';
+    }
+}
+
+# ---- Playwright lazy-loader ----
+
 my $_playwright_loaded = 0;
 sub _ensure_playwright {
     return if $_playwright_loaded;
@@ -29,16 +91,6 @@ sub _ensure_playwright {
     $_playwright_loaded = 1;
 }
 
-my $_handle_counter = 0;
-
-sub _generate_handle {
-    return 'CDwindow-' . sprintf('%08X', ++$_handle_counter) . '-' . int(rand(65536));
-}
-
-=head1 NAME
-
-Selenium::Remote::Driver - Compatibility shim backed by Playwright
-
 =head1 CONSTRUCTOR
 
 =head2 new(%options)
@@ -46,22 +98,18 @@ Selenium::Remote::Driver - Compatibility shim backed by Playwright
 Creates a new driver instance backed by Playwright.
 
 Supported options: browser_name, base_url, default_finder, auto_close,
-inner_window_size, javascript, headless.
+inner_window_size, headless.
 
 Selenium-specific options (remote_server_addr, port, session_id, etc.) are
-accepted but ignored with a warning.
+accepted but silently ignored.
 
 =cut
 
 sub new ( $class, %opts ) {
     _ensure_playwright();
 
-    my $browser_name = delete $opts{browser_name} // 'firefox';
-    my $base_url     = delete $opts{base_url}     // '';
-    my $default_finder = delete $opts{default_finder} // 'xpath';
-    my $auto_close   = exists $opts{auto_close} ? delete $opts{auto_close} : 1;
     my $inner_window_size = delete $opts{inner_window_size};
-    my $headless     = delete $opts{headless}     // 1;
+    my $headless          = delete $opts{headless} // 1;
 
     # Accept but ignore Selenium-specific options
     for my $ignored (qw{remote_server_addr port session_id version platform
@@ -69,7 +117,7 @@ sub new ( $class, %opts ) {
                         firefox_profile pageLoadStrategy error_handler
                         webelement_class ua proxy debug}) {
         if (exists $opts{$ignored}) {
-            carp "Playwright::SeleniumMigrator: ignoring Selenium option '$ignored'"
+            carp "$class: ignoring Selenium option '$ignored'"
                 unless $ignored eq 'javascript' || $ignored eq 'debug';
             delete $opts{$ignored};
         }
@@ -79,37 +127,42 @@ sub new ( $class, %opts ) {
         chrome         => 'chrome',
         googlechrome   => 'chrome',
         firefox        => 'firefox',
-        MicrosoftEdge  => 'chrome',
+        microsoftedge  => 'chrome',
         safari         => 'webkit',
         webkit         => 'webkit',
     );
-    my $pw_type = $browser_map{ lc($browser_name) } // $browser_map{$browser_name} // 'chrome';
+    my $browser_name = delete $opts{browser_name} // 'firefox';
+    my $pw_type = $browser_map{ lc($browser_name) } // 'chrome';
 
     my $pw      = Playwright->new();
     my $browser = $pw->launch(headless => $headless, type => $pw_type);
     my $page    = $browser->newPage();
     my ($context) = @{ $browser->contexts() };
 
-    my $handle = _generate_handle();
+    # Use the Playwright Page's GUID as the window handle.
+    # This mirrors the concept mapping: Selenium 'window' == Playwright 'Page'.
+    my $handle = $page->{guid};
 
     my $self = bless {
-        _pw              => $pw,
-        _browser         => $browser,
-        _page            => $page,
-        _context         => $context,
-        _pages           => { $handle => $page },
-        _current_handle  => $handle,
-        _frame           => undef,
-        _frame_stack     => [],
-        _base_url        => $base_url,
-        _default_finder  => $default_finder,
-        _implicit_wait   => 0,
-        _script_timeout  => 30000,
-        _page_load_timeout => 300000,
-        _auto_close      => $auto_close,
-        _dialog_queue    => [],
-        _dialog_listener => 0,
-        _browser_name    => $browser_name,
+        _pw                  => $pw,
+        _browser             => $browser,
+        _page                => $page,
+        _context             => $context,
+        _pages               => { $handle => $page },
+        _current_handle      => $handle,
+        _frame               => undef,
+        _frame_stack         => [],
+        _base_url            => delete $opts{base_url}        // '',
+        _default_finder      => delete $opts{default_finder}  // 'xpath',
+        _implicit_wait       => 0,
+        _script_timeout      => 30000,
+        _page_load_timeout   => 300000,
+        _auto_close          => exists $opts{auto_close} ? delete $opts{auto_close} : 1,
+        _browser_name        => $browser_name,
+        _dialog_listener     => 0,
+        _dialog_on_registered => 0,
+        _dialog_promise      => undef,
+        _dialog              => undef,
     }, $class;
 
     if ($inner_window_size) {
@@ -120,8 +173,20 @@ sub new ( $class, %opts ) {
     return $self;
 }
 
+# ---- Dialog listener ----
+# Call arm_dialog_listener() BEFORE a click/action you know will trigger a
+# dialog.  This registers a persistent auto-accept handler (so the action
+# doesn't block) and also arms a waitForEvent promise so that get_alert_text()
+# can retrieve the dialog message afterwards.
+
+sub arm_dialog_listener ($self) {
+    return $self->_ensure_dialog_listener();
+}
+
 sub _ensure_dialog_listener ($self) {
-    # Register auto-accept handler once per page
+    # Register auto-accept handler once per page.
+    # The on() handler must accept the dialog so that the triggering action
+    # (e.g. click) is not blocked by an unhandled dialog.
     if (!$self->{_dialog_on_registered}) {
         eval {
             $self->{_page}->on('dialog', 'dialog', 'dialog.accept()');
@@ -129,7 +194,7 @@ sub _ensure_dialog_listener ($self) {
         $self->{_dialog_on_registered} = 1;
     }
 
-    # Arm waitForEvent if not already armed
+    # Arm a waitForEvent promise so _await_dialog() can capture the object.
     return if $self->{_dialog_listener};
     eval {
         $self->{_dialog_promise} = $self->{_page}->waitForEvent('dialog');
@@ -140,7 +205,7 @@ sub _ensure_dialog_listener ($self) {
 # ---- Navigation ----
 
 sub get ($self, $url) {
-    $url = $self->_resolve_url($url);
+    $url = $self->_rel2abs_url($url);
     my $target = $self->{_page};
     $target->goto($url);
     return;
@@ -206,7 +271,7 @@ sub _resolve_selector ($self, $locator, $strategy = undef) {
     return $resolver->();
 }
 
-sub _resolve_url ($self, $url) {
+sub _rel2abs_url ($self, $url) {
     if ($self->{_base_url} && $url =~ m{^/}) {
         return $self->{_base_url} . $url;
     }
@@ -238,7 +303,7 @@ sub find_element ($self, $locator, $strategy = undef) {
     confess "Element not found using strategy '$strategy' and locator '$locator'"
         unless $element;
 
-    return Selenium::Remote::WebElement->new(
+    return $WECLASS->new(
         _driver  => $self,
         _element => $element,
     );
@@ -262,7 +327,7 @@ sub find_elements ($self, $locator, $strategy = undef) {
     }
 
     return map {
-        Selenium::Remote::WebElement->new(
+        $WECLASS->new(
             _driver  => $self,
             _element => $_,
         )
@@ -277,7 +342,7 @@ sub find_child_element ($self, $parent, $locator, $strategy = undef) {
     confess "Child element not found using strategy '$strategy' and locator '$locator'"
         unless $element;
 
-    return Selenium::Remote::WebElement->new(
+    return $WECLASS->new(
         _driver  => $self,
         _element => $element,
     );
@@ -291,7 +356,7 @@ sub find_child_elements ($self, $parent, $locator, $strategy = undef) {
     my @elements = @{ $result // [] };
 
     return map {
-        Selenium::Remote::WebElement->new(
+        $WECLASS->new(
             _driver  => $self,
             _element => $_,
         )
@@ -301,7 +366,7 @@ sub find_child_elements ($self, $parent, $locator, $strategy = undef) {
 sub get_active_element ($self) {
     my $handle = $self->{_page}->evaluateHandle('() => document.activeElement');
     return unless $handle;
-    return Selenium::Remote::WebElement->new(
+    return $WECLASS->new(
         _driver  => $self,
         _element => $handle,
     );
@@ -337,7 +402,7 @@ sub execute_script ($self, $script, @args) {
 
     # Unwrap WebElement args to ElementHandle objects
     @args = map {
-        (ref $_ && ref $_ eq 'Selenium::Remote::WebElement') ? $_->{_element} : $_
+        (ref $_ && $_->isa('Selenium::Remote::WebElement::Playwright')) ? $_->{_element} : $_
     } @args;
 
     if (@args == 0) {
@@ -348,8 +413,7 @@ sub execute_script ($self, $script, @args) {
     }
     else {
         # Playwright evaluate only accepts a single argument.
-        # Wrap multiple args in an array and rewrite the script to
-        # use them as arguments to the inner function.
+        # Wrap multiple args in an array and use apply() to spread them.
         my $wrapper = "var __pw_args = arguments[0]; return (function() { $script }).apply(null, __pw_args);";
         return $target->evaluate($wrapper, \@args);
     }
@@ -359,7 +423,7 @@ sub execute_async_script ($self, $script, @args) {
     my $target = $self->_target();
 
     @args = map {
-        (ref $_ && ref $_ eq 'Selenium::Remote::WebElement') ? $_->{_element} : $_
+        (ref $_ && $_->isa('Selenium::Remote::WebElement::Playwright')) ? $_->{_element} : $_
     } @args;
 
     # Selenium's async scripts receive a callback as the last argument.
@@ -392,34 +456,26 @@ sub get_window_handles ($self) {
 sub _sync_pages ($self) {
     my @live_pages = @{ $self->{_context}->pages() };
 
-    # Build a set of known page GUIDs
-    my %known_guids;
-    for my $handle (keys %{ $self->{_pages} }) {
-        my $page = $self->{_pages}{$handle};
-        $known_guids{ $page->{guid} } = $handle if ref $page && $page->{guid};
-    }
+    # Build a set of known page GUIDs (handles ARE guids)
+    my %known = map { $_ => 1 } keys %{ $self->{_pages} };
 
-    # Add any new pages
+    # Add any new pages using their guid as handle
     for my $page (@live_pages) {
-        next if exists $known_guids{ $page->{guid} };
-        my $handle = _generate_handle();
-        $self->{_pages}{$handle} = $page;
+        next if exists $known{ $page->{guid} };
+        $self->{_pages}{ $page->{guid} } = $page;
     }
 
     # Remove closed pages
     my %live_guids = map { $_->{guid} => 1 } @live_pages;
     for my $handle (keys %{ $self->{_pages} }) {
-        my $page = $self->{_pages}{$handle};
-        if (ref $page && $page->{guid} && !$live_guids{ $page->{guid} }) {
-            delete $self->{_pages}{$handle};
-        }
+        delete $self->{_pages}{$handle} unless $live_guids{$handle};
     }
 }
 
 sub switch_to_window ($self, $handle_or_title) {
     $self->_sync_pages();
 
-    # Try by handle first
+    # Try by handle first (handle == page guid)
     if (exists $self->{_pages}{$handle_or_title}) {
         $self->{_page} = $self->{_pages}{$handle_or_title};
         $self->{_current_handle} = $handle_or_title;
@@ -438,7 +494,7 @@ sub switch_to_window ($self, $handle_or_title) {
             $self->{_current_handle} = $handle;
             $self->{_frame} = undef;
             $self->{_dialog_listener} = 0;
-        $self->{_dialog_on_registered} = 0;
+            $self->{_dialog_on_registered} = 0;
             return;
         }
     }
@@ -484,7 +540,7 @@ sub get_window_position ($self) {
 }
 
 sub set_window_position ($self, $x, $y) {
-    # Playwright doesn't support window positioning in the same way
+    # Playwright doesn't support window positioning
     return;
 }
 
@@ -514,7 +570,7 @@ sub switch_to_frame ($self, $id = undef) {
 
     my $page = $self->{_page};
 
-    if (ref $id && ref $id eq 'Selenium::Remote::WebElement') {
+    if (ref $id && $id->isa('Selenium::Remote::WebElement::Playwright')) {
         # Switch to frame by WebElement
         my $frame = $id->{_element}->contentFrame();
         confess "Element is not a frame" unless $frame;
@@ -526,8 +582,6 @@ sub switch_to_frame ($self, $id = undef) {
     if ($id =~ /^\d+$/) {
         # By index
         my @frames = @{ $page->frames() };
-        # frames()[0] is always the main frame, so frame index 0 in Selenium
-        # corresponds to the first child frame
         my @child_frames = grep {
             my $parent = eval { $_->parentFrame() };
             $parent && ($self->{_frame} ?
@@ -568,20 +622,25 @@ sub switch_to_parent_frame ($self) {
 }
 
 # ---- Cookies ----
+#
+# Playwright cookie fields: name, value, domain, path, expires, httpOnly, secure, sameSite
+# Selenium cookie fields:   name, value, domain, path, expiry, httpOnly, secure
+# Shim: rename 'expires' -> 'expiry' when returning cookies to callers.
+
+sub _shim_cookie ($cookie) {
+    my %c = %$cookie;
+    $c{expiry} = delete $c{expires} if exists $c{expires};
+    return \%c;
+}
 
 sub get_all_cookies ($self) {
     my $cookies = $self->{_context}->cookies();
-    return ref $cookies eq 'ARRAY' ? $cookies : [];
+    return [ map { _shim_cookie($_) } @{ ref $cookies eq 'ARRAY' ? $cookies : [] } ];
 }
 
 sub add_cookie ($self, %cookie) {
-    # Handle positional args: name, value, path, domain, secure, expiry
-    # Or hash args
-
     # Translate Selenium expiry -> Playwright expires
-    if (exists $cookie{expiry}) {
-        $cookie{expires} = delete $cookie{expiry};
-    }
+    $cookie{expires} = delete $cookie{expiry} if exists $cookie{expiry};
 
     # Playwright requires url or (domain + path)
     if (!$cookie{url} && !$cookie{domain}) {
@@ -611,10 +670,17 @@ sub get_cookie_named ($self, $name) {
 }
 
 # ---- Alerts/Dialogs ----
+#
+# Playwright dialogs are events; they must be handled before the triggering
+# action completes.  Call arm_dialog_listener() BEFORE the click/action that
+# will raise the dialog.  The auto-accept on() handler prevents the action
+# from blocking, and the waitForEvent promise captures the Dialog object so
+# get_alert_text() can return the message.
 
 sub _await_dialog ($self) {
     return $self->{_dialog} if $self->{_dialog};
-    confess "No dialog listener armed. Did a click() happen before this call?"
+    confess "No dialog listener armed. Call arm_dialog_listener() before the "
+          . "action that triggers the dialog."
         unless $self->{_dialog_promise};
 
     $self->{_dialog} = $self->{_pw}->await($self->{_dialog_promise});
@@ -629,25 +695,25 @@ sub get_alert_text ($self) {
 }
 
 sub accept_alert ($self) {
-    # Dialog was already auto-accepted by the on() handler.
-    # Just consume the captured dialog to reset state.
+    # Dialog was already auto-accepted by the on() handler registered in
+    # arm_dialog_listener().  Just consume the captured object to reset state.
     my $dialog = $self->_await_dialog();
     $self->{_dialog} = undef;
     return;
 }
 
 sub dismiss_alert ($self) {
-    # Note: with the auto-accept pattern, dismiss_alert is equivalent to
-    # accept_alert. The dialog was already accepted by the on() handler
-    # to prevent blocking. This is a known limitation.
+    # Note: the dialog was already auto-accepted by the on() handler.
+    # True dismiss semantics are not achievable with the current approach;
+    # this is a known limitation.
     my $dialog = $self->_await_dialog();
     $self->{_dialog} = undef;
     return;
 }
 
 sub send_keys_to_alert ($self, $keys) {
-    # Note: the dialog was already auto-accepted. For prompt dialogs,
-    # the text cannot be sent after auto-accept. This is a known limitation.
+    # Note: the dialog was already auto-accepted.  Prompt text cannot be sent
+    # after auto-accept; this is a known limitation.
     my $dialog = $self->_await_dialog();
     $self->{_dialog} = undef;
     return;
@@ -691,9 +757,9 @@ sub set_async_script_timeout ($self, $ms) {
 
 sub get_timeouts ($self) {
     return {
-        implicit => $self->{_implicit_wait},
+        implicit    => $self->{_implicit_wait},
         'page load' => $self->{_page_load_timeout},
-        script => $self->{_script_timeout},
+        script      => $self->{_script_timeout},
     };
 }
 
@@ -701,8 +767,7 @@ sub get_timeouts ($self) {
 
 sub screenshot ($self) {
     # Selenium returns base64-encoded PNG data.
-    # Playwright's screenshot() returns binary data via the server,
-    # so save to a temp file and read+encode it.
+    # Save to a temp file so we can read the raw bytes back.
     require File::Temp;
     require MIME::Base64;
     my $tmp = File::Temp->new(SUFFIX => '.png');
@@ -772,19 +837,19 @@ sub mouse_move_to_location ($self, %opts) {
 # ---- Miscellaneous ----
 
 sub pause ($self, $seconds) {
-    select(undef, undef, undef, $seconds);
+    sleep $seconds;
     return;
 }
 
 sub get_capabilities ($self) {
     return {
-        browserName => $self->{_browser_name},
+        browserName  => $self->{_browser_name},
         platformName => $^O,
     };
 }
 
 sub status ($self) {
-    return { ready => 1 };
+    return { ready => !!$self->{_pw}->_check_and_build_spec() };
 }
 
 sub has_javascript ($self) { return 1 }
@@ -844,7 +909,14 @@ sub DESTROY ($self) {
     $self->quit() if $self->{_auto_close} && !$self->{_quit_called};
 }
 
-sub debug_on  ($self) { return }
-sub debug_off ($self) { return }
+sub debug_on ($self) {
+    carp ref($self) . ": debug_on() has no effect; pass debug=>1 to Playwright->new() instead";
+    return;
+}
+
+sub debug_off ($self) {
+    carp ref($self) . ": debug_off() has no effect; pass debug=>1 to Playwright->new() instead";
+    return;
+}
 
 1;

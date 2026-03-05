@@ -1,4 +1,21 @@
-package Selenium::Remote::WebElement;
+package Playwright::SeleniumMigrator::WebElement;
+
+# Loader shim - actual implementation is in Selenium::Remote::WebElement::Playwright.
+# Nothing needed here; the package is just a load target.
+
+package Selenium::Remote::WebElement::Playwright;
+
+# In :dropin mode, Driver.pm's import() adds this package to
+# @Selenium::Remote::WebElement::ISA (S::R::WE -> S::R::WE::Playwright).
+# Adding S::R::WE back to our own @ISA would create a cycle, so we only
+# inherit from it when we are NOT already in S::R::WE's @ISA.
+our @ISA;
+BEGIN {
+    unless (grep { $_ eq 'Selenium::Remote::WebElement::Playwright' }
+                @Selenium::Remote::WebElement::ISA) {
+        @ISA = ('Selenium::Remote::WebElement');
+    }
+}
 
 use strict;
 use warnings;
@@ -12,40 +29,37 @@ use feature qw{signatures};
 
 use Playwright::SeleniumMigrator::WDKeys;
 
-my $_element_id_counter = 0;
-
-sub _generate_id {
-    return 'element-' . sprintf('%08X', ++$_element_id_counter);
-}
-
 sub new ($class, %opts) {
-    confess "Missing _driver" unless $opts{_driver};
+    confess "Missing _driver"  unless $opts{_driver};
     confess "Missing _element" unless $opts{_element};
+    # Use the underlying Playwright element's GUID as the WebElement ID.
+    confess "_element must have a guid" unless $opts{_element}{guid};
 
     return bless {
         _driver  => $opts{_driver},
         _element => $opts{_element},
-        _id      => $opts{_id} // _generate_id(),
+        _id      => $opts{_element}{guid},
     }, $class;
 }
 
 # ---- Accessors ----
 
-sub id ($self) { return $self->{_id} }
+sub id     ($self) { return $self->{_id} }
 sub driver ($self) { return $self->{_driver} }
 
 # ---- Interaction ----
 
 sub click ($self, %opts) {
-    # Ensure dialog listener is armed before click, in case it triggers a dialog
-    $self->{_driver}->_ensure_dialog_listener();
     $self->{_element}->click(\%opts);
     return;
 }
 
 sub submit ($self) {
     my $page = $self->{_driver}{_page};
-    $page->evaluate('var el = arguments[0]; if (el.form) { el.form.submit() } else if (el.submit) { el.submit() } else { throw new Error("Element has no form to submit") }', $self->{_element});
+    $page->evaluate(
+        'var el = arguments[0]; if (el.form) { el.form.submit() } else if (el.submit) { el.submit() } else { throw new Error("Element has no form to submit") }',
+        $self->{_element}
+    );
     return;
 }
 
@@ -53,9 +67,8 @@ sub send_keys ($self, @keys) {
     my $page = $self->{_driver}{_page};
     my $eh   = $self->{_element};
 
-    # Focus the element so keyboard input goes to it.
-    # Use click() to focus, as it's more reliable than focus() and
-    # avoids ElementHandle disposal issues with type().
+    # Click to focus (more reliable than focus() and avoids handle disposal
+    # issues that arise with elementHandle.type()).
     $eh->click();
 
     for my $key_string (@keys) {
@@ -64,26 +77,23 @@ sub send_keys ($self, @keys) {
 
         for my $char (@chars) {
             my $ord = ord($char);
-            # Check if it's a Unicode PUA codepoint (Selenium special key)
+            # Unicode PUA codepoints (U+E000–U+F8FF) are Selenium special keys
             if ($ord >= 0xE000 && $ord <= 0xF8FF) {
-                # Flush any buffered text first
                 if (length $buffer) {
                     $page->keyboard->type($buffer);
                     $buffer = '';
                 }
-                # Translate and press the special key
                 my $pw_key = $Selenium::Remote::WDKeys::UNICODE_TO_PLAYWRIGHT{$char};
                 if (defined $pw_key && length $pw_key) {
                     $page->keyboard->press($pw_key);
                 }
-                # null key (\x{E000}) is a no-op
+                # U+E000 null key is a no-op
             }
             else {
                 $buffer .= $char;
             }
         }
 
-        # Flush remaining buffer
         if (length $buffer) {
             $page->keyboard->type($buffer);
         }
@@ -123,7 +133,8 @@ sub get_tag_name ($self) {
 sub get_css_attribute ($self, $prop) {
     my $page = $self->{_driver}{_page};
     return $page->evaluate(
-        "return window.getComputedStyle(arguments[0]).getPropertyValue('$prop')", $self->{_element}
+        "return window.getComputedStyle(arguments[0]).getPropertyValue('$prop')",
+        $self->{_element}
     );
 }
 
@@ -142,8 +153,8 @@ sub is_enabled ($self) {
 }
 
 sub is_selected ($self) {
-    # Works for checkboxes and radio buttons via isChecked,
-    # and for <option> elements via the selected property
+    # isChecked() works for checkboxes and radio buttons.
+    # For <option> elements, check the .selected property.
     my $tag = $self->get_tag_name();
     if ($tag eq 'option') {
         my $page = $self->{_driver}{_page};
@@ -244,9 +255,9 @@ sub drag ($self, $target) {
     my $dst_box = $target->{_element}->boundingBox();
 
     my $page = $self->{_driver}{_page};
-    my $sx = $src_box->{x} + $src_box->{width} / 2;
+    my $sx = $src_box->{x} + $src_box->{width}  / 2;
     my $sy = $src_box->{y} + $src_box->{height} / 2;
-    my $dx = $dst_box->{x} + $dst_box->{width} / 2;
+    my $dx = $dst_box->{x} + $dst_box->{width}  / 2;
     my $dy = $dst_box->{y} + $dst_box->{height} / 2;
 
     $page->mouse->move($sx, $sy);
@@ -254,12 +265,6 @@ sub drag ($self, $target) {
     $page->mouse->move($dx, $dy);
     $page->mouse->up();
     return;
-}
-
-# ---- Comparison ----
-
-sub compare ($self, $other) {
-    return $self->{_element}{guid} eq $other->{_element}{guid};
 }
 
 1;

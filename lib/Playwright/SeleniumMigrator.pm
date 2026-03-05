@@ -12,30 +12,19 @@ use feature qw{signatures};
 
 use Carp qw{confess};
 
-# Refuse to load if Selenium::Remote::Driver is already in scope.
-# If it is, we'd be redefining some but not all of the module space,
-# which would lead to confusing partial-override bugs.
-BEGIN {
-    if ($INC{'Selenium/Remote/Driver.pm'}) {
-        confess "Selenium::Remote::Driver is already loaded. "
-              . "Playwright::SeleniumMigrator must be loaded INSTEAD of "
-              . "Selenium::Remote::Driver, not alongside it.";
-    }
-}
-
-# Load our sub-modules which define the Selenium::* packages.
-# Playwright itself is loaded lazily at Driver->new() time so that
-# this module can be loaded even without the generated Playwright modules.
-use Playwright::SeleniumMigrator::Driver;
+# Load sub-modules.  The ':dropin' tag on Driver causes Selenium::Remote::Driver
+# and Selenium::Remote::WebElement to become aliases for the Playwright-backed
+# implementations, so existing test suites can run unmodified.
+use Playwright::SeleniumMigrator::Driver ':dropin';
 use Playwright::SeleniumMigrator::WebElement;
 use Playwright::SeleniumMigrator::WDKeys;
 use Playwright::SeleniumMigrator::Waiter;
 
 =head1 SYNOPSIS
 
-    # Instead of:
+    # Replace:
     #   use Selenium::Remote::Driver;
-    # Use:
+    # With:
     use Playwright::SeleniumMigrator;
 
     my $driver = Selenium::Remote::Driver->new(browser_name => 'chrome');
@@ -47,13 +36,44 @@ use Playwright::SeleniumMigrator::Waiter;
 =head1 DESCRIPTION
 
 Playwright::SeleniumMigrator provides a drop-in compatibility layer that allows
-existing Selenium::Remote::Driver test suites to run against Playwright without
-code changes. Simply replace your C<use Selenium::Remote::Driver> statement with
+existing L<Selenium::Remote::Driver> test suites to run against Playwright
+without code changes.
+
+Simply replace your C<use Selenium::Remote::Driver> statement with
 C<use Playwright::SeleniumMigrator>.
 
-This module defines the C<Selenium::Remote::Driver>, C<Selenium::Remote::WebElement>,
-C<Selenium::Remote::WDKeys>, and C<Selenium::Waiter> packages, backed by Playwright
-method calls.
+=head2 Concept mapping
+
+=over 4
+
+=item * Selenium B<window> == Playwright B<Page>
+
+=item * Window handles returned by C<get_current_window_handle> /
+C<get_window_handles> are the GUIDs of the underlying Playwright Page objects.
+
+=item * Selenium B<session> == Playwright B<Browser>
+
+=back
+
+=head2 Alert / dialog handling
+
+Unlike Selenium (which queues dialogs asynchronously), Playwright fires dialogs
+as events that must be handled before the triggering action returns.  Call
+C<< $driver->arm_dialog_listener() >> B<before> the click or action that will
+raise a dialog:
+
+    $driver->arm_dialog_listener();
+    $driver->find_element('#ok-btn', 'id')->click();
+    my $text = $driver->get_alert_text();
+    $driver->accept_alert();
+
+=head2 Advanced usage: named package
+
+To use the Playwright-backed driver under its own name without polluting the
+C<Selenium::Remote::Driver> namespace:
+
+    use Selenium::Remote::Driver::Playwright;
+    my $driver = Selenium::Remote::Driver::Playwright->new(browser_name => 'chrome');
 
 =cut
 
