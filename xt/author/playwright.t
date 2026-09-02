@@ -30,7 +30,7 @@ note "Browser PID: ".$process->{pid}."\n";
 
 # Open a tab therein
 my $tempdir = File::Temp::tempdir( CLEANUP => 1 );
-my $page = $browser->newPage({ videosPath => $tempdir, acceptDownloads => 1 });
+my $page = $browser->newPage({ recordVideo => { dir => $tempdir }, acceptDownloads => 1 });
 
 # Test the spec method
 ok($page->spec(), "Was able to open a browser and fetch the playwright spec");

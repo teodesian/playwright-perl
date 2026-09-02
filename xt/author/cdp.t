@@ -19,7 +19,8 @@ BEGIN {
 }
 
 my $chromium = File::Which::which('chromium') || File::Which::which('chromium-browser');
-die "Chromium not installed on this host." unless $chromium;
+
+skip_all "Chromium not installed on this host." unless $chromium;
 
 my $port = Net::EmptyPort::empty_port();
 

@@ -784,9 +784,6 @@ sub _start_server_windows ( $port, $timeout, $debug, $cleanup, @args) {
         my $pid = qq/playwright-server:$port/;
         my @cmdprefix = ("start /MIN", qq{"$pid"});
 
-        # Test::UnusedVars hack
-        $cleanup = 'bogus';
-
         my $cmdstring = join(' ', @cmdprefix, @args );
         print "$cmdstring\n" if $debug;
         system($cmdstring);
