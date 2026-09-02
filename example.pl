@@ -210,7 +210,7 @@ CDP: {
     my $browser = $handle->launch( headless => 1, type => 'chrome' );
 
     # Open a tab therein
-    my $page = $browser->newPage({ videosPath => 'video', acceptDownloads => 1 });
+    my $page = $browser->newPage({ recordVideo => { dir => 'video' }, acceptDownloads => 1 });
 
     # Load a URL in the tab
     my $res = $page->goto('http://troglodyne.net', { waitUntil => 'networkidle' });
