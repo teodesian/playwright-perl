@@ -89,6 +89,8 @@ It should provide you with instructions which will get you working right away.
 However, depending on your node installation this may not work due to dependencies for node.js not being in the expected location.
 To fix this, you will need to update your NODE_PATH environment variable to point to the correct location.
 
+This location is usually going to be the output of `npm root -g`.
+
 =head3 Node Versions
 
 playwright itself tends to need the latest version of node to work properly.
@@ -439,7 +441,7 @@ sub _check_node {
 
     warn $output if $output;
 
-    confess( "playwright_server could not run successfully.
+    confess( qq{playwright_server could not run successfully.
     See the above error message for why.
     It's likely to be unmet dependencies, or a NODE_PATH issue.
 
@@ -448,14 +450,14 @@ sub _check_node {
 
     npm i express playwright uuid
     sudo npx playwright install-deps
-    export NODE_PATH=\"\$(pwd)/node_modules\".
+    export NODE_PATH="\$(npm root):\$(npm root -g)"
 
     If you still experience issues, run the following:
 
     NODE_DEBUG=module playwright_server --check
 
     This should tell you why node can't find the deps you have installed.
-    ");
+    });
 
 }
 
