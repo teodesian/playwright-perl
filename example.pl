@@ -21,7 +21,7 @@ NORMAL: {
     print "Browser PID: ".$process->{pid}."\n";
 
     # Open a tab therein
-    my $page = $browser->newPage({ videosPath => 'video', acceptDownloads => 1 });
+    my $page = $browser->newPage({ recordVideo => { dir => 'video' }, acceptDownloads => 1 });
 
     # Test the spec method
     print Dumper($page->spec(),$page);
