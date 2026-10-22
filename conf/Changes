@@ -1,7 +1,8 @@
 Revision history for Playwright
 
-1.622 2026-10-22 TEODESIAN
+1.641 2026-10-22 TEODESIAN
     - Fix #78 - setInputFiles() and other methods now accept { name, mimeType, buffer } file payloads.  Thanks to casimirloeber for the report and workaround.
+    - Bump for new version of playwright
 
 1.621 2026-09-01 TEODESIAN
     - Bump for new version of playwright
