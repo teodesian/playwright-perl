@@ -5,18 +5,11 @@ use warnings;
 
 use Cwd 'abs_path';
 use FindBin;
+use lib 'xt/lib';
+use Playwright::AuthorTest;
 use Playwright;
 use Playwright::Util;
 use Test2::V0;
-
-BEGIN {
-    unless ($ENV{AUTHOR_TESTING}) {
-        print qq{1..0 # SKIP these tests are for testing by the author\n};
-        exit;
-    }
-    $ENV{NODE_PATH} //= '';
-    $ENV{NODE_PATH} = Playwright::Util::find_node_modules().":$ENV{NODE_PATH}";
-}
 
 my $handle = Playwright->new();
 my $browser = $handle->launch( headless => 1, type => 'chrome' );

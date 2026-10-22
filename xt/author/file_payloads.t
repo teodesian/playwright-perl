@@ -2,17 +2,9 @@ use strict;
 use warnings;
 
 use Test2::V0;
+use lib 'xt/lib';
+use Playwright::AuthorTest;
 use Playwright;
-use Playwright::Util;
-
-BEGIN {
-    unless ($ENV{AUTHOR_TESTING}) {
-        print qq{1..0 # SKIP these tests are for testing by the author\n};
-        exit;
-    }
-    $ENV{NODE_PATH} //= '';
-    $ENV{NODE_PATH} = Playwright::Util::find_node_modules().":$ENV{NODE_PATH}";
-}
 
 # 1x1 PNG, 67 bytes, plenty of which are not valid UTF-8
 my $png = pack 'H*', '89504e470d0a1a0a0000000d4948445200000001000000010806000000'

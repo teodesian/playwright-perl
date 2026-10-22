@@ -2,19 +2,12 @@ use strict;
 use warnings;
 
 use Net::EmptyPort qw(empty_port);
+use lib 'xt/lib';
+use Playwright::AuthorTest;
 use Playwright;
 use Test2::V0;
 use Cwd qw{abs_path};
 use FindBin;
-
-BEGIN {
-    unless ($ENV{AUTHOR_TESTING}) {
-        print qq{1..0 # SKIP these tests are for testing by the author\n};
-        exit;
-    }
-    $ENV{NODE_PATH} //= '';
-    $ENV{NODE_PATH} = Playwright::Util::find_node_modules().":$ENV{NODE_PATH}";
-}
 
 my $path2bin = Playwright::Util::_find("bin/reap_playwright_servers");
 require($path2bin);

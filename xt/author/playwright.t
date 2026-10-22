@@ -2,6 +2,8 @@ use strict;
 use warnings;
 
 use Data::Dumper;
+use lib 'xt/lib';
+use Playwright::AuthorTest;
 use Playwright;
 use Playwright::Util;
 use Try::Tiny;
@@ -11,15 +13,6 @@ use Test2::V0;
 use File::Temp;
 use File::Copy;
 use File::Find;
-
-BEGIN {
-    unless ($ENV{AUTHOR_TESTING}) {
-        print qq{1..0 # SKIP these tests are for testing by the author\n};
-        exit;
-    }
-    $ENV{NODE_PATH} //= '';
-    $ENV{NODE_PATH} = Playwright::Util::find_node_modules().":$ENV{NODE_PATH}";
-}
 
 my $handle = Playwright->new( debug => 1 );
 
