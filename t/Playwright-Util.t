@@ -34,6 +34,37 @@ $json = '{ "error":false, "message": { "_type":"Bogus", "_guid":"abc123" } }';
 
 is(Playwright::Util::request('tickle','chase', 'localhost', 666, LWP::UserAgent->new(), a => 'b' ), { _type => 'Bogus', _guid => 'abc123' }, "Good response from server decoded and returned");
 
+subtest "File payload buffers are base64'd for the server" => sub {
+    my $sent;
+    $lwpmock->redefine('request', sub {
+        my ( $ua, $req ) = @_;
+        $sent = JSON::MaybeXS::decode_json( $req->content );
+        return bless({},'BogusResponse');
+    });
+    $json = '{ "error":false, "message":null }';
+
+    my $bytes   = join '', map { chr } 0 .. 255;
+    my $payload = { name => 'a.bin', mimeType => 'application/octet-stream', buffer => $bytes };
+    my $args    = [ '#f', [ $payload ], { multipart => { upload => $payload, note => 'hi' } }, { buffer => 'not a file' }, { force => JSON::MaybeXS::true() } ];
+
+    Playwright::Util::request( 'POST', 'command', 'localhost', 666, LWP::UserAgent->new(), args => $args );
+
+    my $encoded = { base64 => MIME::Base64::encode_base64( $bytes, '' ) };
+    is( $sent->{args}[1][0]{buffer}, $encoded, "File payload in an array is encoded" );
+    is( $sent->{args}[2]{multipart}{upload}{buffer}, $encoded, "File payload nested in a hash is encoded" );
+    is( $sent->{args}[2]{multipart}{note}, 'hi', "Neighbouring values are untouched" );
+    is( $sent->{args}[3]{buffer}, 'not a file', "A buffer outside a file payload is untouched" );
+    is( $sent->{args}[4]{force}, T(), "Blessed values such as JSON booleans pass through" );
+    is( $payload->{buffer}, $bytes, "Caller's payload is not modified" );
+
+    my $wide = [ { name => 'a.txt', mimeType => 'text/plain', buffer => "\x{263A}" } ];
+    like(
+        dies { Playwright::Util::request( 'POST', 'command', 'localhost', 666, LWP::UserAgent->new(), args => $wide ) },
+        qr/^Wide character/,
+        "A buffer of characters, not bytes, dies before anything is sent, as the POD says",
+    );
+};
+
 #Not testing async/await, mocking forks is bogus
 
 done_testing();

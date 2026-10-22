@@ -13,6 +13,7 @@ use File::Temp;
 use POSIX();
 use Scalar::Util qw{reftype};
 use Cwd();
+use MIME::Base64();
 
 #ABSTRACT: Common utility functions for the Playwright module
 
@@ -40,6 +41,7 @@ sub request ( $method,$url, $host, $port, $ua, %args ) {
             }
             $transformed;
         } @{$args{args}};
+        $args{args} = _encode_file_payloads( $args{args} );
     }
 
     my $request = HTTP::Request->new( $method, $fullurl );
@@ -61,6 +63,34 @@ sub request ( $method,$url, $host, $port, $ua, %args ) {
     confess($msg) if $decoded->{error};
 
     return $msg;
+}
+
+# JSON cannot carry the raw bytes of a file payload, so playwright_server expects them as { base64 => ... }.
+# Containers are copied so that the caller's arguments stay as they were.
+sub _encode_file_payloads ($args) {
+    my $copy  = [@$args];
+    my @queue = map { \$_ } @$copy;
+    while ( my $slot = shift @queue ) {
+        my $value = $$slot;
+        my $type  = ref $value;
+        if ( $type eq 'ARRAY' ) {
+            $$slot = [@$value];
+            push @queue, map { \$_ } @{$$slot};
+        }
+        elsif ( $type eq 'HASH' ) {
+            $$slot = {%$value};
+            if ( _is_file_payload($value) ) {
+                $$slot->{buffer} = { base64 => MIME::Base64::encode_base64( $value->{buffer}, '' ) };
+                next;
+            }
+            push @queue, map { \$$slot->{$_} } keys %{$$slot};
+        }
+    }
+    return $copy;
+}
+
+sub _is_file_payload ($hash) {
+    return exists $hash->{name} && exists $hash->{mimeType} && defined $hash->{buffer} && !ref $hash->{buffer};
 }
 
 sub arr2hash ($array,$primary_key,$callback='') {

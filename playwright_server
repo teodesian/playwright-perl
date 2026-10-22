@@ -41,6 +41,23 @@ function arr2hash (arr,primary_key) {
     return inside_out;
 }
 
+// Turn { buffer : { base64 : '...' } } in file payloads back into a Buffer, as Playwright::Util::request encodes them.
+// Call this before swapping uuids for live objects, which are large and cyclic.
+function reviveFilePayloads (args) {
+    var queue = [...args];
+    while (queue.length) {
+        var node = queue.shift();
+        if (node === null || typeof node !== 'object') {
+            continue;
+        }
+        if ('name' in node && 'mimeType' in node && node.buffer && typeof node.buffer.base64 === 'string') {
+            node.buffer = Buffer.from(node.buffer.base64, 'base64');
+            continue;
+        }
+        queue.push(...Object.values(node));
+    }
+}
+
 var fix_it=false;
 if (spec instanceof Array) {
     fix_it = true;
@@ -194,6 +211,8 @@ app.post('/command', async (req, res) => {
             subject = objects[object].keyboard;
         }
     }
+
+    reviveFilePayloads(args);
 
     // Sometimes the arg is *also* a thing to look up, like when passing page to getCDPSession, or passing elements.
     args = args.map( x =>

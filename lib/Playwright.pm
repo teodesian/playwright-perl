@@ -280,6 +280,31 @@ Remember when doing an await() with playwright-perl you are waiting on a remote 
 You may wish to spawn a subprocess using a different tool to download very large files.
 If this is not an option, consider increasing the timeout on the LWP object used by the Playwright object (it's the 'ua' member of the class).
 
+=head2 Uploading files
+
+Methods such as setInputFiles() and FileChooser.setFiles() accept a path to a file.
+That path is read by playwright_server, so the file must exist on the machine that runs playwright_server.
+If you run against a remote playwright_server, pass the file contents as a payload instead:
+
+    open( my $fh, '<:raw', 'picture.png' ) or die "Could not open picture.png: $!";
+    my $png = do { local $/; <$fh> };
+    close $fh;
+
+    $page->setInputFiles( '#upload', { name => 'picture.png', mimeType => 'image/png', buffer => $png } );
+
+The same { name, mimeType, buffer } payload works in the files of Locator.drop() and in the multipart files of APIRequestContext requests.
+We base64 the buffer for transport, and playwright_server decodes it back into the original bytes.
+
+The buffer must be a string of bytes.
+Passing anything other than bytes is not supported.
+A string that holds characters above 0xFF dies with "Wide character in subroutine entry".
+If you have a string of characters, such as text that you decoded, convert it to bytes with Encode first:
+
+    use Encode qw{encode_utf8};
+    $page->setInputFiles( '#upload', { name => 'notes.txt', mimeType => 'text/plain', buffer => encode_utf8($text) } );
+
+If you read files with :raw and never decode them, your strings are bytes already, and you never hit this.
+
 =head2 Doing arbitrary requests
 
 When you either want to test APIs (or not look like a scraper/crawler) you'll want to issue arbitrary requests, such as POST/HEAD/DELETE et cetera.
