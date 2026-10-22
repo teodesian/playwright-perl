@@ -128,6 +128,14 @@ NORMAL: {
     my $chooseu = $handle->await( $choochoo );
     $chooseu->setFiles('test.jpg');
 
+    # Upload file contents rather than a path, for when playwright_server runs on another host.
+    # The buffer must be bytes, so read it with :raw.
+    open( my $jpg_fh, '<:raw', "$FindBin::Bin/test.jpg" ) or die "Could not open test.jpg: $!";
+    my $jpg = do { local $/; <$jpg_fh> };
+    close $jpg_fh;
+    $page->setInputFiles( '#drphil', { name => 'uploaded.jpg', mimeType => 'image/jpeg', buffer => $jpg } );
+    print "Uploaded ".length($jpg)." bytes, browser got ".$page->evaluate('return document.querySelector("#drphil").files[0].size')."\n";
+
     # Make sure we can do child selectors
     my $parent = $page->select('body');
     my $child = $parent->select('#drphil');
