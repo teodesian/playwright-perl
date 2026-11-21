@@ -55,3 +55,6 @@ bin/playwright_server.bat
 # Artifacts created by example.pl
 video/
 *.jpg
+
+# The playwright release that fetch_playwright.sh clones.
+/.playwright/

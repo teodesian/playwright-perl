@@ -1,8 +1,9 @@
 #!/bin/bash
-# generate_api_json.sh reads the playwright repository from ../playwright.
-# When there is none, clone the release that npm installed, so api.json describes that release.
+# generate_api_json.sh reads the playwright repository that playwright_src.sh
+# names.  When there is none, clone the release that npm installed into
+# .playwright, so api.json describes that release.
 here="$(cd "$(dirname "$0")" && pwd)"
-playwright_src="$here/../playwright"
+. "$here/playwright_src.sh"
 if [ -d "$playwright_src/utils/doclint" ]; then
     exit 0
 fi
