@@ -1,9 +1,9 @@
 #!/bin/bash
-# Relies on the user having cloned the playwright repository in the directory directly adjacent to this repo
+# Generates api.json from the playwright repository that playwright_src.sh names.
 here="$(cd "$(dirname "$0")" && pwd)"
-playwright_src="$here/../playwright"
+. "$here/playwright_src.sh"
 if [ ! -d "$playwright_src/utils/doclint" ]; then
-    echo "generate_api_json.sh: no playwright checkout at $playwright_src" >&2
+    echo "generate_api_json.sh: no playwright checkout at $here/../playwright or $playwright_src" >&2
     echo "Playwright does not ship api.json on npm, so it is generated from their repository." >&2
     echo "Run ./fetch_playwright.sh, or clone it beside this one yourself." >&2
     exit 1
